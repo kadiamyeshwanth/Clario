@@ -30,7 +30,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Finance Tracker"
+                android:text="Clario"
                 android:textSize="24sp"
                 android:textStyle="bold"
                 android:textColor="#FFFFFF"/>
@@ -86,7 +86,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Copy this from Finance Tracker → Settings → SMS Auto-Import"
+                android:text="Copy this from Clario → Settings → SMS Auto-Import"
             android:textSize="11sp"
             android:textColor="#666666"
             android:layout_marginBottom="24dp"/>

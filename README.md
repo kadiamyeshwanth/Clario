@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1>💸 Personal Finance Tracker</h1>
+<h1>💸 Clario</h1>
 
 <p><strong>A full-stack, production-grade personal finance platform — AI chat, SMS auto-import, investment portfolio, family finance, mood tracking, spending challenges, and a beautiful Notion-inspired UI. Built for India. Works everywhere.</strong></p>
 
@@ -8,10 +8,10 @@
   <a href="https://personal-finance-tracker-jet-delta.vercel.app" target="_blank">
     <img src="https://img.shields.io/badge/🌐%20Live%20Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" />
   </a>
-  <a href="https://github.com/kadiamyeshwanth/Personal-Finance-Tracker/issues">
+  <a href="https://github.com/kadiamyeshwanth/Clario/issues">
     <img src="https://img.shields.io/badge/🐛%20Report%20Bug-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" />
   </a>
-  <a href="https://github.com/kadiamyeshwanth/Personal-Finance-Tracker/issues">
+  <a href="https://github.com/kadiamyeshwanth/Clario/issues">
     <img src="https://img.shields.io/badge/✨%20Request%20Feature-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" />
   </a>
 </p>
@@ -31,7 +31,7 @@
 
 ## 🧭 Overview
 
-Personal Finance Tracker is a **fully-featured, production-ready finance management platform** designed for the Indian market. It goes far beyond a simple transaction logger — it is an intelligent financial companion that reads your bank SMS messages, learns your spending personality, coaches you through challenges, lets you journal your financial mindset, and delivers Spotify-Wrapped-style monthly reviews.
+Clario is a **fully-featured, production-ready finance management platform** designed for the Indian market. It goes far beyond a simple transaction logger — it is an intelligent financial companion that reads your bank SMS messages, learns your spending personality, coaches you through challenges, lets you journal your financial mindset, and delivers Spotify-Wrapped-style monthly reviews.
 
 Everything runs **without any paid AI API** — all intelligence is local, rule-based, and fast.
 
@@ -254,8 +254,8 @@ Everything runs **without any paid AI API** — all intelligence is local, rule-
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/kadiamyeshwanth/Personal-Finance-Tracker.git
-cd Personal-Finance-Tracker
+git clone https://github.com/kadiamyeshwanth/Clario.git
+cd Clario
 ```
 
 ---
@@ -332,7 +332,7 @@ npm run dev
 ## 📁 Project Structure
 
 ```
-Personal-Finance-Tracker/
+Clario/
 │
 ├── finance-tracker/                      # React + Vite frontend
 │   └── src/
@@ -893,7 +893,7 @@ Distributed under the **MIT License**. See [`LICENSE`](./LICENSE) for details.
 
 <br/>
 
-<img src="https://img.shields.io/github/stars/kadiamyeshwanth/Personal-Finance-Tracker?style=social" />
-<img src="https://img.shields.io/github/forks/kadiamyeshwanth/Personal-Finance-Tracker?style=social" />
+<img src="https://img.shields.io/github/stars/kadiamyeshwanth/Clario?style=social" />
+<img src="https://img.shields.io/github/forks/kadiamyeshwanth/Clario?style=social" />
 
 </div>

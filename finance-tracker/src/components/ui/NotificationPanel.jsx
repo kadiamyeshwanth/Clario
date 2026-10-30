@@ -84,7 +84,7 @@ const useClientAlerts = () => {
       }
     });
 
-    if (txns.length === 0) notes.push({ id: 'onboard', type: 'info', icon: TrendingUp, title: 'Welcome to Finance Tracker!', desc: 'Add your first transaction to start seeing insights.', time: null, link: '/transactions' });
+    if (txns.length === 0) notes.push({ id: 'onboard', type: 'info', icon: TrendingUp, title: 'Welcome to Clario!', desc: 'Add your first transaction to start seeing insights.', time: null, link: '/transactions' });
 
     return notes;
   }, [allTxns, budgets, goals]);

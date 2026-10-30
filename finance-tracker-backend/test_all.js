@@ -1,5 +1,5 @@
 /**
- * Personal Finance Tracker - Full API Test Suite (A to Z)
+ * Clario - Full API Test Suite (A to Z)
  * Run: node test_all.js
  */
 

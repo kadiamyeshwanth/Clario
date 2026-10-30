@@ -59,7 +59,7 @@ class TrackerForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Finance Tracker")
+            .setContentTitle("Clario")
             .setContentText("Monitoring UPI & bank SMS...")
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(openIntent)

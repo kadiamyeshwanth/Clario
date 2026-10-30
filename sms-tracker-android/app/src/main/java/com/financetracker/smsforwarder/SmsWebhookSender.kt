@@ -13,7 +13,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * SmsWebhookSender — sends SMS data to the Finance Tracker backend webhook.
+ * SmsWebhookSender — sends SMS data to the Clario backend webhook.
  *
  * Uses OkHttp for HTTP POST (lightweight, no extra dependencies).
  * Runs on a background coroutine — never blocks the main thread.

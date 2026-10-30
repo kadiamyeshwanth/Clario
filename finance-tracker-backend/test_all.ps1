@@ -1,5 +1,5 @@
 # ============================================================
-#  Personal Finance Tracker - Full API Test Suite (A to Z)
+#  Clario - Full API Test Suite (A to Z)
 #  Run: powershell -ExecutionPolicy Bypass -File test_all.ps1
 # ============================================================
 
