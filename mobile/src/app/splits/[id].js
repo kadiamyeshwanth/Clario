@@ -28,7 +28,7 @@ export default function SplitGroup() {
   const del = useMutation({ mutationFn: (eid) => api.del(`/splits/groups/${id}/expenses/${eid}`), onSuccess: refresh });
 
   if (q.isLoading) return <Screen edges={[]}><Loading /></Screen>;
-  if (q.isError) return <Screen edges={[]}><ErrorNote error={q.error} onRetry={q.refetch} /></Screen>;
+  if (q.isError && !q.data) return <Screen edges={[]}><ErrorNote error={q.error} onRetry={q.refetch} /></Screen>;
 
   const cur = g.currency;
   const fmt = (n) => money(n, { code: cur, decimals: 2 });

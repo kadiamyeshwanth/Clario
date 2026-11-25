@@ -48,7 +48,7 @@ export default function Activity() {
           </Pressable>
         )}
       </View>
-      {q.isLoading ? <Loading /> : q.isError ? <View style={{ padding: 16 }}><ErrorNote error={q.error} onRetry={q.refetch} /></View> : (
+      {q.isLoading ? <Loading /> : (q.isError && !q.data) ? <View style={{ padding: 16 }}><ErrorNote error={q.error} onRetry={q.refetch} /></View> : (
         <FlatList
           data={rows}
           keyExtractor={(x) => x._id}

@@ -64,9 +64,16 @@ npm install
 npx expo start                # press w for web, a for Android, i for iOS
 ```
 
-Mobile API address: `EXPO_PUBLIC_API_URL` (or `extra.apiUrl` in `app.json`).
-The Android emulator reaches your computer at `http://10.0.2.2:5000/api/v1`;
-a physical phone needs your computer's LAN IP.
+The mobile app talks to the **live** API by default (`extra.apiUrl` in
+`app.json` → `https://finance-tracker-api-dbiw.onrender.com/api/v1`), so the
+phone and the website share one account. To point it at a local server, set
+`EXPO_PUBLIC_API_URL` — the Android emulator reaches your computer at
+`http://10.0.2.2:5000/api/v1`; a phone on USB can use
+`adb reverse tcp:5000 tcp:5000` and `http://localhost:5000/api/v1`.
+
+Offline: the app keeps the last data it loaded on the phone (cleared on
+sign-out), queues new transactions and bank SMS while offline, and syncs them
+when the connection returns.
 
 Or everything in Docker:
 

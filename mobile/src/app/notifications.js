@@ -19,7 +19,7 @@ export default function Notifications() {
 
   return (
     <Screen edges={[]} refreshing={q.isRefetching} onRefresh={q.refetch}>
-      {q.isLoading ? <Loading /> : q.isError ? <ErrorNote error={q.error} onRetry={q.refetch} /> : (
+      {q.isLoading ? <Loading /> : (q.isError && !q.data) ? <ErrorNote error={q.error} onRetry={q.refetch} /> : (
         <>
           {q.data.unreadCount > 0 && <Button small variant="default" title="Mark all as read" style={{ alignSelf: 'flex-start' }} onPress={() => readAll.mutate()} />}
           {q.data.data.length === 0 ? <Empty title="You’re all caught up" body="Budget warnings, bill reminders and split updates appear here." /> : (
