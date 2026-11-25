@@ -18,6 +18,7 @@ import {
 import { fetchMoodHistory, logMood, fetchCorrelation } from '../../api/mood';
 import { spring, stagger, prefersReducedMotion } from '../../lib/motion';
 import toast from 'react-hot-toast';
+import { cs, nl } from '@/lib/money';
 
 const MOODS = [
   { key: 'happy',    Icon: Smiley,        label: 'Happy',    tint: 'var(--green)' },
@@ -27,7 +28,7 @@ const MOODS = [
   { key: 'sad',      Icon: SmileySad,     label: 'Sad',      tint: 'var(--red)' },
 ];
 const META = Object.fromEntries(MOODS.map(m => [m.key, m]));
-const inr = (n) => `₹${Math.round(Math.abs(n)).toLocaleString('en-IN')}`;
+const inr = (n) => `${cs()}${Math.round(Math.abs(n)).toLocaleString(nl())}`;
 
 export default function MoodMoney() {
   const qc = useQueryClient();

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { nl } from '@/lib/money';
 
 /**
  * AnimatedCounter — smoothly counts up from 0 to `value`.
@@ -11,7 +12,7 @@ const AnimatedCounter = ({
   suffix = '',
   duration = 1.0,
   decimals = 0,
-  locale = 'en-IN',
+  locale = nl(),
   style = {},
 }) => {
   const motionVal = useMotionValue(0);

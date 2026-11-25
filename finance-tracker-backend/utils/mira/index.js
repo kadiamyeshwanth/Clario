@@ -23,7 +23,9 @@ const { generateResponse: legacyResponse } = require('../chatEngine');
 
 const NAME = 'Mira';
 
-const inr  = (n) => `₹${Math.round(Math.abs(n || 0)).toLocaleString('en-IN')}`;
+const money = require('../moneyContext');
+// Formats in the asking user's currency (set per request in ask()).
+const inr  = (n) => money.format(Math.abs(n || 0));
 const pct  = (n) => `${Math.round(n)}%`;
 /**
  * " in August 2026" / " last month" — labels that are already adverbial read
@@ -105,7 +107,7 @@ const handlers = {
     if (!rows.length) return answer(`Nothing to rank${when(e.range)} yet.`);
     const top = Q.biggest(rows, e.limit || 3);
     const list = top.map((t, i) =>
-      `${i + 1}. **${inr(t.amount)}** — ${t.merchant || t.description || t.category} (${new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })})`
+      `${i + 1}. **${inr(t.amount)}** — ${t.merchant || t.description || t.category} (${new Date(t.date).toLocaleDateString(money.locale(), { day: 'numeric', month: 'short' })})`
     ).join('\n');
     return answer(`Your biggest ${top.length > 1 ? `${top.length} expenses` : 'expense'}${when(e.range)}:\n\n${list}`,
       { rows: top });
@@ -118,7 +120,7 @@ const handlers = {
     }
     const shown = Q.biggest(rows, e.limit || 8);
     const list = shown.map(t =>
-      `· **${inr(t.amount)}** — ${t.merchant || t.description || t.category} · ${new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+      `· **${inr(t.amount)}** — ${t.merchant || t.description || t.category} · ${new Date(t.date).toLocaleDateString(money.locale(), { day: 'numeric', month: 'short' })}`
     ).join('\n');
     const more = rows.length > shown.length ? `\n\n…and ${rows.length - shown.length} more. Total ${inr(Q.sum(rows))}.` : '';
     const qualifier = e.amount ? ` ${e.comparator === 'lt' ? 'under' : 'over'} ${inr(e.amount)}` : '';
@@ -213,7 +215,7 @@ const handlers = {
     const lines = goals.slice(0, 4).map((g) => {
       const p = Q.goalProjection(ctx.transactions, g);
       if (!p.feasible) return `· **${g.name}** — ${inr(p.remaining)} to go, but there's no monthly surplus to fund it right now.`;
-      const eta = p.eta.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+      const eta = p.eta.toLocaleDateString(money.locale(), { month: 'long', year: 'numeric' });
       const verdict = p.onTrackForDeadline === false ? ' — **behind** your deadline' : p.onTrackForDeadline ? ' — on track' : '';
       return `· **${g.name}** — ${inr(p.remaining)} to go, about ${p.monthsNeeded} months (${eta})${verdict}.`;
     });
@@ -307,7 +309,9 @@ const handlers = {
  * @param {object} ctx - { transactions, budgets, goals, subscriptions, now, memory }
  * @returns {{ text, data, source, intent, entities }}
  */
-const ask = (rawMessage, ctx = {}) => {
+const ask = (rawMessage, ctx = {}) => money.withCurrency(ctx.currency || 'INR', () => askInner(rawMessage, ctx));
+
+const askInner = (rawMessage, ctx = {}) => {
   const now = ctx.now || new Date();
   const transactions = ctx.transactions || [];
 

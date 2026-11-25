@@ -16,8 +16,9 @@ import ShaderBg, { DASH_SHADER } from './shader-bg';
 import FloatingPaths from './FloatingPaths';
 import BrandLogo from './BrandLogo';
 import { spring, stagger } from '../../lib/motion';
+import { cs, nl } from '@/lib/money';
 
-const inr = (n) => `₹${Math.round(Math.abs(n)).toLocaleString('en-IN')}`;
+const inr = (n) => `${cs()}${Math.round(Math.abs(n)).toLocaleString(nl())}`;
 
 /* Wallet-type → icon, so an account is identifiable without reading it. */
 const TYPE_ICON = {
@@ -29,7 +30,7 @@ const TYPE_ICON = {
    One headline figure
    ───────────────────────────────────────────────────────────────────────── */
 export function StatTile({
-  label, sub, value, prefix = '₹', delta, deltaGood = true,
+  label, sub, value, prefix = `${cs()}`, delta, deltaGood = true,
   icon: Icon, to, accent = false, tone, index = 0,
 }) {
   // tone: 'white' | 'gray' — distinct card fills so each figure is easy to spot.

@@ -23,9 +23,10 @@ import { fetchWrapped } from '../api/wrapped';
 import PageHeader from '../components/ui/PageHeader';
 import { getPersonalityVisual, stripEmoji } from '../lib/personality';
 import toast from 'react-hot-toast';
+import { cs, nl } from '@/lib/money';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const fmt = (n) => `₹${Math.abs(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+const fmt = (n) => `${cs()}${Math.abs(n || 0).toLocaleString(nl(), { maximumFractionDigits: 0 })}`;
 
 /* ── Slide surfaces ───────────────────────────────────────────────────────────
    The old slides used stock blues, purples and greens (#16213e, #2d0a4e,
@@ -185,7 +186,7 @@ const buildSlides = (data) => {
           <Medallion icon={CalendarBlank} size={60} />
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
             <div style={KICKER}>Your most expensive day</div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{new Date(data.worstSpendingDay.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{new Date(data.worstSpendingDay.date).toLocaleDateString(nl(), { weekday: 'long', day: 'numeric', month: 'long' })}</div>
             <div style={{ fontSize: '40px', fontWeight: 900, color: 'var(--red, #f43f5e)', fontVariantNumeric: 'tabular-nums' }}>{fmt(data.worstSpendingDay.amount)}</div>
             <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>spent in a single day</div>
           </motion.div>

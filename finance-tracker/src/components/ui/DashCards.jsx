@@ -17,8 +17,9 @@ import {
 import AnimatedCounter from './AnimatedCounter';
 import { spring, stagger, prefersReducedMotion } from '../../lib/motion';
 import { buildSegments, activeSegmentColor, organicHeights, incomeColor, INCOME_LEVELS, INCOME_ACTIVE } from '../../lib/segments';
+import { cs, nl } from '@/lib/money';
 
-const inr = (n) => `₹${Math.round(Math.abs(n)).toLocaleString('en-IN')}`;
+const inr = (n) => `${cs()}${Math.round(Math.abs(n)).toLocaleString(nl())}`;
 
 const ACCOUNT_ICON = {
   bank: Bank, credit: CreditCard, wallet: WalletIcon, cash: Money,
@@ -51,7 +52,7 @@ export function AccountsCard({ wallets = [], totalBalance }) {
       </header>
 
       <div className="dc-figure money">
-        <AnimatedCounter value={total} prefix="₹" duration={1.1} />
+        <AnimatedCounter value={total} prefix={`${cs()}`} duration={1.1} />
       </div>
 
       {comp.length > 0 && (
@@ -142,7 +143,7 @@ export function PortfolioCard({ investments = [], transactions = [] }) {
     const now = new Date();
     const buckets = Array.from({ length: 12 }, (_, i) => {
       const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
-      return { key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString('en-IN', { month: 'short' }), amount: 0 };
+      return { key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString(nl(), { month: 'short' }), amount: 0 };
     });
     (transactions || []).filter(t => t.type === 'income' && !t.isRecurring).forEach(t => {
       const d = new Date(t.date);
@@ -179,7 +180,7 @@ export function PortfolioCard({ investments = [], transactions = [] }) {
 
       <div className="dc-figure-row">
         <span className="dc-figure money">
-          <AnimatedCounter value={thisM} prefix="₹" duration={1.1} />
+          <AnimatedCounter value={thisM} prefix={`${cs()}`} duration={1.1} />
         </span>
         {momPct != null && (
           <span className={`dc-delta ${up ? 'is-up' : 'is-down'}`}>
@@ -188,7 +189,7 @@ export function PortfolioCard({ investments = [], transactions = [] }) {
           </span>
         )}
       </div>
-      <div className="dc-sub-note">₹{Math.round(income12).toLocaleString('en-IN')} earned over 12 months</div>
+      <div className="dc-sub-note">{cs()}{Math.round(income12).toLocaleString(nl())} earned over 12 months</div>
 
       <div className="dc-strip dc-strip--months" aria-hidden="true">
         {months.map((m, i) => {
@@ -198,7 +199,7 @@ export function PortfolioCard({ investments = [], transactions = [] }) {
             <motion.span
               key={m.key}
               className={`dc-mbar ${last ? 'is-last' : ''}`}
-              title={`${m.label}: ₹${Math.round(m.amount).toLocaleString('en-IN')}`}
+              title={`${m.label}: ${cs()}${Math.round(m.amount).toLocaleString(nl())}`}
               initial={reduced ? false : { height: 0 }}
               animate={{ height: h }}
               transition={{ duration: 0.5, delay: i * 0.03, ease: [0.22, 1, 0.36, 1] }}
@@ -219,7 +220,7 @@ export function PortfolioCard({ investments = [], transactions = [] }) {
               transition={stagger(i, 0.05)}>
               <span className="dc-dot" style={{ background: 'var(--brand)', color: 'var(--brand)' }} />
               <span className="dc-alloc-name">{m.label}{i === 0 ? ' · best month' : ''}</span>
-              <span className="dc-alloc-pct money">₹{Math.round(m.amount).toLocaleString('en-IN')}</span>
+              <span className="dc-alloc-pct money">{cs()}{Math.round(m.amount).toLocaleString(nl())}</span>
             </motion.li>
           ))}
       </ul>
@@ -231,7 +232,7 @@ export function PortfolioCard({ investments = [], transactions = [] }) {
    AI promo
    ───────────────────────────────────────────────────────────────────────── */
 export function AIPromoCard() {
-  const month = new Date().toLocaleDateString('en-IN', { month: 'long' });
+  const month = new Date().toLocaleDateString(nl(), { month: 'long' });
   return (
     <motion.section className="dc dc--ai"
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={spring}>

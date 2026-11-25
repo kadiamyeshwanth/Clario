@@ -34,7 +34,11 @@ import {
   Warning,
 } from '@phosphor-icons/react';
 import { getPersonalityVisual } from '../lib/personality';
-import { getUserStats, updateProfile, changePassword, deleteAccount, clearAllData } from '../api/users';
+import { getUserStats, updateProfile, changePassword, deleteAccount, clearAllData, getPreferences, savePreferences, exportAllData, exportTransactionsCsv } from '../api/users';
+import { fetchSessions, revokeSession, logoutAll } from '../api/auth';
+import { CURRENCY_CODES } from '../lib/money';
+import { LANGUAGES, t } from '../lib/i18n';
+import { Globe, Devices, DownloadSimple, BellRinging } from '@phosphor-icons/react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import PageHeader from '../components/ui/PageHeader';
@@ -43,6 +47,7 @@ import { getAvatar, setAvatar, fileToSquareDataURL } from '../lib/profile';
 import { getA11y, setA11y } from '../lib/a11y';
 import { PersonArmsSpread, TextAa } from '@phosphor-icons/react';
 import client from '../api/client';
+import { cs, nl } from '@/lib/money';
 
 // ── Password Strength Indicator ───────────────────────────────────────────────
 const getStrength = (pw) => {
@@ -78,7 +83,7 @@ const PasswordStrength = ({ password }) => {
 };
 
 // ── Confirm Modal ─────────────────────────────────────────────────────────────
-const ConfirmModal = ({ open, title, description, confirmText, onConfirm, onClose, danger = true }) => (
+const ConfirmModal = ({ open, title, description, confirmText, onConfirm, onClose, danger = true, children, busy = false }) => (
   <AnimatePresence>
     {open && (
       <>
@@ -121,9 +126,10 @@ const ConfirmModal = ({ open, title, description, confirmText, onConfirm, onClos
               <div style={{ fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.5 }}>{description}</div>
             </div>
           </div>
+          {children}
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
             <button onClick={onClose} className="n-btn n-btn-default n-btn-sm">Cancel</button>
-            <button onClick={onConfirm} className={`n-btn n-btn-sm ${danger ? 'n-btn-danger-solid' : 'n-btn-primary'}`}>{confirmText}</button>
+            <button onClick={onConfirm} disabled={busy} className={`n-btn n-btn-sm ${danger ? 'n-btn-danger-solid' : 'n-btn-primary'}`}>{busy ? 'Working…' : confirmText}</button>
           </div>
         </motion.div>
         </div>
@@ -235,6 +241,19 @@ const SMSSetupSection = () => {
 
   const APPS = [
     {
+      name: 'Clario app (Android) — recommended',
+      Icon: DeviceMobile,
+      steps: ['Install the Clario app on your Android phone and sign in', 'Open More → SMS auto-import', 'Turn on "Auto-import bank SMS" and allow SMS access', 'Tap "Import last 30 days" to bring in recent payments', 'Done — every GPay / PhonePe / card / bank SMS now becomes a transaction, even when the app is closed. No URL to copy.'],
+      url: null,
+    },
+    {
+      name: 'iPhone (Shortcuts)',
+      Icon: DeviceMobile,
+      steps: ['Apple lets no app read SMS, so iPhone uses the built-in Shortcuts app', 'Shortcuts → Automation → + → Message → Message Contains "debited" → Run Immediately', 'Action: "Get Contents of URL" → URL = your webhook URL below, Method POST, Body JSON', 'Fields: message = Shortcut Input → Content, from = Shortcut Input → Sender', 'Make a second automation for "credited"'],
+      url: 'https://support.apple.com/guide/shortcuts/create-a-new-personal-automation-apdfbdbd7123/ios',
+      linkLabel: 'Apple guide',
+    },
+    {
       name: 'SMS Forwarder (Android)',
       Icon: DeviceMobile,
       steps: ['Install "SMS Forwarder" by Bogdan Melnychuk from Play Store', 'Open app → tap "+" → Select "HTTP" filter', 'Set URL to your webhook URL below', 'Set Method to POST, Body format: JSON', 'Add filter: Sender contains "HDFC" OR "SBI" OR "ICICI" OR "GPay" etc.', 'Save and enable the rule'],
@@ -330,10 +349,12 @@ const SMSSetupSection = () => {
                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
                   {React.createElement(APPS[activeApp].Icon, { size: 15, weight: 'fill', style: { marginRight: 7, verticalAlign: '-2px' } })}{APPS[activeApp].name}
                 </span>
-                <a href={APPS[activeApp].url} target="_blank" rel="noreferrer"
-                  style={{ fontSize: '12px', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
-                  Play Store <ExternalLink size={10} />
-                </a>
+                {APPS[activeApp].url && (
+                  <a href={APPS[activeApp].url} target="_blank" rel="noreferrer"
+                    style={{ fontSize: '12px', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
+                    {APPS[activeApp].linkLabel || 'Play Store'} <ExternalLink size={10} />
+                  </a>
+                )}
               </div>
               <ol style={{ margin: 0, padding: '0 0 0 18px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {APPS[activeApp].steps.map((step, i) => (
@@ -376,11 +397,11 @@ const SMSSetupSection = () => {
                   {history.slice(0, 10).map(t => (
                     <div key={t._id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
                       <span style={{ fontSize: '14px', fontWeight: 700, color: t.type === 'income' ? 'var(--green)' : 'var(--text)', minWidth: '80px', fontVariantNumeric: 'tabular-nums' }}>
-                        {t.type === 'income' ? '+' : '-'}₹{t.amount?.toLocaleString('en-IN')}
+                        {t.type === 'income' ? '+' : '-'}{cs()}{t.amount?.toLocaleString(nl())}
                       </span>
                       <span style={{ fontSize: '12px', color: 'var(--text-2)', flex: 1 }}>{t.description}</span>
                       <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '4px', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-3)' }}>{t.category}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{new Date(t.date).toLocaleDateString('en-IN')}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>{new Date(t.date).toLocaleDateString(nl())}</span>
                     </div>
                   ))}
                 </div>
@@ -397,6 +418,173 @@ const SMSSetupSection = () => {
 };
 
 // ── Main SettingsPage ─────────────────────────────────────────────────────────
+// ── Preferences: currency, language, timezone, notifications ──────────────────
+const CURRENCY_NAMES = {
+  INR: 'Indian Rupee', USD: 'US Dollar', EUR: 'Euro', GBP: 'British Pound', AED: 'UAE Dirham', SGD: 'Singapore Dollar',
+  AUD: 'Australian Dollar', CAD: 'Canadian Dollar', JPY: 'Japanese Yen', CNY: 'Chinese Yuan', BRL: 'Brazilian Real',
+  MXN: 'Mexican Peso', ZAR: 'South African Rand', NGN: 'Nigerian Naira', KES: 'Kenyan Shilling', BDT: 'Bangladeshi Taka',
+  PKR: 'Pakistani Rupee', LKR: 'Sri Lankan Rupee', NPR: 'Nepalese Rupee', IDR: 'Indonesian Rupiah', PHP: 'Philippine Peso', CHF: 'Swiss Franc',
+};
+const TIMEZONES = (() => {
+  try { return Intl.supportedValuesOf('timeZone'); } catch { return ['UTC', 'Asia/Kolkata', 'Europe/London', 'America/New_York']; }
+})();
+
+const PreferencesSection = () => {
+  const { updateUser, currentUser } = useAuth();
+  const { data: prefs, isLoading } = useQuery({ queryKey: ['preferences'], queryFn: getPreferences });
+  const [draft, setDraft] = useState(null);
+  const [convert, setConvert] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const p = draft || prefs;
+
+  if (isLoading || !p) return (
+    <Section icon={Globe} title={t('Preferences')} subtitle="Currency, language and region">
+      <div className="n-skeleton" style={{ height: '120px', borderRadius: 'var(--r-md)' }} />
+    </Section>
+  );
+
+  const set = (patch) => setDraft({ ...p, ...patch });
+  const setNotif = (k) => setDraft({ ...p, notifications: { ...(p.notifications || {}), [k]: !(p.notifications || {})[k] } });
+  const currencyChanged = draft && draft.currency !== prefs.currency;
+  const reloadNeeded = draft && (draft.currency !== prefs.currency || draft.language !== prefs.language);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { preferences, converted } = await savePreferences({
+        currency: p.currency, language: p.language, timezone: p.timezone, weekStartsOn: p.weekStartsOn,
+        notifications: p.notifications, ...(currencyChanged && { convertExisting: convert }),
+      });
+      updateUser({ ...currentUser, preferences });
+      if (converted) toast.success(`Converted ${converted.transactions} transactions at 1 ${prefs.currency} = ${converted.rate.toFixed(4)} ${preferences.currency}${converted.approximate ? ' (approximate rate)' : ''}`);
+      else toast.success('Preferences saved');
+      // Currency and language are read once at load, so apply them with a reload.
+      if (reloadNeeded) setTimeout(() => window.location.reload(), 600);
+      setDraft(null);
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Could not save preferences');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const NOTIFS = [
+    ['budgetAlerts', 'Budget alerts', 'When a category reaches its alert threshold or goes over.'],
+    ['billReminders', 'Bill reminders', 'Three days before a subscription renews.'],
+    ['weeklyDigest', 'Weekly digest', 'A Monday summary of last week’s spending.'],
+    ['push', 'Phone notifications', 'Also send these to the Clario mobile app.'],
+  ];
+
+  return (
+    <Section icon={Globe} title={t('Preferences')} subtitle="Currency, language, region and notifications — synced to every device">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+        <div>
+          <label className="n-label">{t('Currency')}</label>
+          <select className="n-input" value={p.currency} onChange={(e) => set({ currency: e.target.value })}>
+            {CURRENCY_CODES.map((c) => <option key={c} value={c}>{c} — {CURRENCY_NAMES[c] || c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="n-label">{t('Language')}</label>
+          <select className="n-input" value={p.language} onChange={(e) => set({ language: e.target.value })}>
+            {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="n-label">{t('Timezone')}</label>
+          <select className="n-input" value={p.timezone} onChange={(e) => set({ timezone: e.target.value })}>
+            {(TIMEZONES.includes(p.timezone) ? TIMEZONES : [p.timezone, ...TIMEZONES]).map((z) => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="n-label">Week starts on</label>
+          <select className="n-input" value={p.weekStartsOn ?? 1} onChange={(e) => set({ weekStartsOn: Number(e.target.value) })}>
+            <option value={1}>Monday</option><option value={0}>Sunday</option><option value={6}>Saturday</option>
+          </select>
+        </div>
+      </div>
+
+      {currencyChanged && (
+        <label className="a11y-row" style={{ marginBottom: '16px' }}>
+          <div>
+            <b>Convert my existing amounts</b>
+            <span>Re-price your history from {prefs.currency} to {draft.currency} at today’s rate. Turn off if your amounts were already in {draft.currency}.</span>
+          </div>
+          <button type="button" role="switch" aria-checked={convert} className={`a11y-switch${convert ? ' is-on' : ''}`} onClick={() => setConvert((v) => !v)}><i /></button>
+        </label>
+      )}
+
+      <div className="n-label" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}><BellRinging size={13} /> {t('Notifications')}</div>
+      <div className="a11y-list" style={{ marginBottom: '16px' }}>
+        {NOTIFS.map(([k, label, desc]) => (
+          <label className="a11y-row" key={k}>
+            <div><b>{label}</b><span>{desc}</span></div>
+            <button type="button" role="switch" aria-checked={p.notifications?.[k] !== false}
+              className={`a11y-switch${p.notifications?.[k] !== false ? ' is-on' : ''}`} onClick={() => setNotif(k)}><i /></button>
+          </label>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <button type="button" className="n-btn n-btn-primary n-btn-sm" disabled={!draft || saving} onClick={save}>{saving ? 'Saving…' : t('Save')}</button>
+        {draft && <button type="button" className="n-btn n-btn-default n-btn-sm" onClick={() => setDraft(null)}>{t('Cancel')}</button>}
+        {reloadNeeded && <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>The app reloads to apply the new {draft.currency !== prefs.currency ? 'currency' : 'language'}.</span>}
+      </div>
+    </Section>
+  );
+};
+
+// ── Devices + data portability ────────────────────────────────────────────────
+const DevicesSection = () => {
+  const qc = useQueryClient();
+  const { logout } = useAuth();
+  const { data: sessions = [], isLoading } = useQuery({ queryKey: ['sessions'], queryFn: fetchSessions });
+  const [busy, setBusy] = useState('');
+
+  const run = async (key, fn, ok) => {
+    setBusy(key);
+    try { await fn(); if (ok) toast.success(ok); qc.invalidateQueries({ queryKey: ['sessions'] }); }
+    catch (e) { toast.error(e.response?.data?.error || e.message || 'Something went wrong'); }
+    finally { setBusy(''); }
+  };
+
+  return (
+    <Section icon={Devices} title={t('Signed-in devices')} subtitle="Every browser and phone with access to your account" accentColor="var(--brand)">
+      <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '16px' }}>
+        {isLoading && <div className="n-skeleton" style={{ height: '60px', borderRadius: 'var(--r-md)' }} />}
+        {sessions.map((s) => (
+          <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+            <div>
+              <div style={{ fontSize: '13px', color: 'var(--text)', fontWeight: 500 }}>
+                {s.device}{s.current && <span style={{ marginLeft: 8, fontSize: '11px', color: 'var(--brand)' }}>This device</span>}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-3)' }}>
+                {s.platform} · last active {new Date(s.lastUsedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+              </div>
+            </div>
+            {!s.current && (
+              <button type="button" className="n-btn n-btn-danger-ghost n-btn-sm" disabled={busy === s.id}
+                onClick={() => run(s.id, () => revokeSession(s.id), 'Device signed out')}>{t('Sign out')}</button>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <button type="button" className="n-btn n-btn-default n-btn-sm" disabled={busy === 'all'}
+          onClick={() => run('all', async () => { await logoutAll(); await logout(); }, 'Signed out of every device')}>
+          {t('Sign out everywhere')}
+        </button>
+        <button type="button" className="n-btn n-btn-default n-btn-sm" disabled={busy === 'json'} onClick={() => run('json', exportAllData, 'Export downloaded')}>
+          <DownloadSimple size={13} /> {t('Export my data')} (JSON)
+        </button>
+        <button type="button" className="n-btn n-btn-default n-btn-sm" disabled={busy === 'csv'} onClick={() => run('csv', exportTransactionsCsv, 'Transactions downloaded')}>
+          <DownloadSimple size={13} /> Transactions (CSV)
+        </button>
+      </div>
+    </Section>
+  );
+};
+
 const SettingsPage = () => {
   const { currentUser, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -438,6 +626,7 @@ const SettingsPage = () => {
   // Modals
   const [deleteModal, setDeleteModal] = useState(false);
   const [clearModal, setClearModal] = useState(false);
+  const [deletePw, setDeletePw] = useState('');
 
   // Stats query
   const { data: stats } = useQuery({ queryKey: ['userStats'], queryFn: getUserStats });
@@ -462,7 +651,7 @@ const SettingsPage = () => {
   });
 
   const deleteAccountMut = useMutation({
-    mutationFn: deleteAccount,
+    mutationFn: () => deleteAccount(deletePw),
     onSuccess: () => {
       toast.success('Account deleted');
       logout();
@@ -473,7 +662,7 @@ const SettingsPage = () => {
   const clearDataMut = useMutation({
     mutationFn: clearAllData,
     onSuccess: (data) => {
-      toast.success(`Cleared ${data.deleted?.transactions || 0} transactions, ${data.deleted?.goals || 0} goals, ${data.deleted?.budgets || 0} budgets`);
+      toast.success(`Cleared ${data.deleted?.transaction || 0} transactions, ${data.deleted?.goal || 0} goals, ${data.deleted?.budget || 0} budgets`);
       qc.invalidateQueries();
       setClearModal(false);
     },
@@ -488,7 +677,7 @@ const SettingsPage = () => {
 
   const handlePasswordChange = (e) => {
     e.preventDefault();
-    if (!pwForm.currentPassword || !pwForm.newPassword) { toast.error('Both fields are required'); return; }
+    if ((currentUser?.hasPassword !== false && !pwForm.currentPassword) || !pwForm.newPassword) { toast.error('Both fields are required'); return; }
     if (pwForm.newPassword.length < 8) { toast.error('New password must be at least 8 characters'); return; }
     passwordMut.mutate(pwForm);
   };
@@ -521,7 +710,7 @@ const SettingsPage = () => {
           <div className="st-row-main">
             <b>{currentUser?.username}</b>
             <span>{stats?.memberSince
-              ? `Member since ${new Date(stats.memberSince).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}`
+              ? `Member since ${new Date(stats.memberSince).toLocaleDateString(nl(), { month: 'long', year: 'numeric' })}`
               : currentUser?.email}</span>
           </div>
           <div className="st-row-actions">
@@ -552,10 +741,10 @@ const SettingsPage = () => {
         </form>
       </Section>
 
-      <Section title="Password" subtitle="You'll need your current password.">
+      <Section title="Password" subtitle={currentUser?.hasPassword === false ? 'You sign in with Google — set a password to also sign in with email.' : "You'll need your current password."}>
         <form onSubmit={handlePasswordChange} className="st-form">
           <div className="st-grid">
-            <div>
+            <div style={currentUser?.hasPassword === false ? { display: 'none' } : undefined}>
               <label className="n-label" htmlFor="st-pw-current">Current password</label>
               <div className="st-pw">
                 <input id="st-pw-current" className="n-input" type={showCurrent ? 'text' : 'password'}
@@ -603,6 +792,8 @@ const SettingsPage = () => {
 
       {tab === 'preferences' && (
       <>
+      <PreferencesSection />
+
       <Section title="Appearance">
         <div className="st-row">
           <div className="st-row-main"><b>Theme</b><span>Applies across the whole app.</span></div>
@@ -671,9 +862,11 @@ const SettingsPage = () => {
       {tab === 'import' && <SMSSetupSection />}
 
       {tab === 'data' && (
+        <>
+        <DevicesSection />
         <Section title="Your data" subtitle="These can't be undone.">
           <div className="st-row">
-            <div className="st-row-main"><b>Clear all data</b><span>Delete every transaction, goal and budget. Your account stays.</span></div>
+            <div className="st-row-main"><b>Clear all data</b><span>Delete every transaction, account, budget, goal, subscription and journal entry. Your account stays.</span></div>
             <button className="n-btn n-btn-default n-btn-sm" onClick={() => setClearModal(true)}>Clear data</button>
           </div>
           <div className="st-row">
@@ -681,13 +874,14 @@ const SettingsPage = () => {
             <button className="n-btn n-btn-danger n-btn-sm" onClick={() => setDeleteModal(true)}>Delete account</button>
           </div>
         </Section>
+        </>
       )}
 
       {/* Modals */}
       <ConfirmModal
         open={clearModal}
         title="Clear all data?"
-        description="This will permanently delete all your transactions, goals, and budgets. Your account will remain active. This action cannot be undone."
+        description="This will permanently delete all your financial data — transactions, accounts, budgets, goals, subscriptions, investments and journal. Your account will remain active. This action cannot be undone."
         confirmText="Yes, clear everything"
         onConfirm={() => clearDataMut.mutate()}
         onClose={() => setClearModal(false)}
@@ -698,8 +892,17 @@ const SettingsPage = () => {
         description="This will permanently delete your account and all associated data. You will be logged out immediately. This action cannot be undone."
         confirmText="Yes, delete my account"
         onConfirm={() => deleteAccountMut.mutate()}
-        onClose={() => setDeleteModal(false)}
-      />
+        onClose={() => { setDeleteModal(false); setDeletePw(''); }}
+        busy={deleteAccountMut.isPending}
+      >
+        {currentUser?.hasPassword !== false && (
+          <div style={{ marginBottom: '16px' }}>
+            <label className="n-label" htmlFor="st-del-pw">Confirm with your password</label>
+            <input id="st-del-pw" className="n-input" type="password" autoComplete="current-password" value={deletePw}
+              onChange={(e) => setDeletePw(e.target.value)} placeholder="Your password" />
+          </div>
+        )}
+      </ConfirmModal>
     </div>
   );
 };

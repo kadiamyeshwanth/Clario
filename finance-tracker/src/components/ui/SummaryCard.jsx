@@ -1,4 +1,5 @@
 import React from 'react';
+import { cs, nl } from '@/lib/money';
 
 // A reusable card for the Income / Expense / Savings summary at the top.
 const SummaryCard = ({ title, amount, subtitle, gradient, isPositive }) => {
@@ -39,7 +40,7 @@ const SummaryCard = ({ title, amount, subtitle, gradient, isPositive }) => {
         margin: '10px 0',
         fontVariantNumeric: 'tabular-nums',
       }}>
-        ₹{amount.toLocaleString('en-IN')}
+        {cs()}{amount.toLocaleString(nl())}
       </div>
       <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)' }}>
         {subtitle}

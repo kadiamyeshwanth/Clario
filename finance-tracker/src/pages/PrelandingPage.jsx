@@ -27,6 +27,7 @@ import { Globe, GLOBE_CONFIG } from '../components/ui/globe';
 import { GlobePolaroids } from '../components/ui/globe-polaroids';
 import Illustration from '../components/ui/Illustration';
 import { CrowdCanvas } from '../components/ui/crowd-canvas';
+import { cs } from '@/lib/money';
 
 /* the footer globe sits on near-black — hotter markers + a warmer glow than
    the one on the white hero, and near-equatorial so it reads as cresting the
@@ -340,12 +341,12 @@ const OverviewMock = () => (
     <div className="mr-mock-bar"><i /><i /><i /><span>Overview · September</span></div>
     <div className="mr-mock-body">
       <div className="mr-tiles">
-        <div className="mr-tile mr-tile--on"><b>Balance</b><span>₹2,31,450</span></div>
-        <div className="mr-tile"><b>Income</b><span>₹1,99,500</span></div>
+        <div className="mr-tile mr-tile--on"><b>Balance</b><span>{cs()}2,31,450</span></div>
+        <div className="mr-tile"><b>Income</b><span>{cs()}1,99,500</span></div>
         <div className="mr-tile"><b>Saved</b><span>47%</span></div>
       </div>
       <div className="mr-well mr-plot-card">
-        <div className="mr-plot-head"><b>Cash flow</b><span>Net +₹1,13,460</span></div>
+        <div className="mr-plot-head"><b>Cash flow</b><span>Net +{cs()}1,13,460</span></div>
         <Plot values={[34, 52, 41, 68, 47, 83, 59, 92, 71, 64, 88, 76]} on={i => i % 3 === 1} />
       </div>
     </div>
@@ -358,10 +359,10 @@ const BudgetMock = () => (
     <div className="mr-mock-body">
       <div className="mr-prog">
         {[
-          { l: 'Groceries', v: '₹8,200 / ₹10,000', p: 82 },
-          { l: 'Shopping',  v: '₹12,150 / ₹5,000', p: 100, over: true },
-          { l: 'Transport', v: '₹2,400 / ₹4,000',  p: 60 },
-          { l: 'Dining',    v: '₹3,050 / ₹6,000',  p: 51 },
+          { l: 'Groceries', v: `${cs()}8,200 / ${cs()}10,000`, p: 82 },
+          { l: 'Shopping',  v: `${cs()}12,150 / ${cs()}5,000`, p: 100, over: true },
+          { l: 'Transport', v: `${cs()}2,400 / ${cs()}4,000`,  p: 60 },
+          { l: 'Dining',    v: `${cs()}3,050 / ${cs()}6,000`,  p: 51 },
         ].map((b, i) => (
           <div className="mr-prog-i" key={b.l}>
             <b>{b.l}</b><small>{b.v}</small>
@@ -386,12 +387,12 @@ const AskMock = () => (
       <div className="mr-chat">
         <div className="mr-msg mr-msg--me">Why was September worse than August?</div>
         <div className="mr-msg mr-msg--them">
-          Spending rose <strong>₹18,400</strong> — almost all Shopping, three orders in one
-          week against a ₹5,000 budget. Everything else held.
+          Spending rose <strong>{cs()}18,400</strong> — almost all Shopping, three orders in one
+          week against a {cs()}5,000 budget. Everything else held.
         </div>
         <div className="mr-msg mr-msg--me">What should I do about it?</div>
         <div className="mr-msg mr-msg--them">
-          Raise the Shopping budget to <strong>₹8,000</strong> or set a 2-order weekly cap —
+          Raise the Shopping budget to <strong>{cs()}8,000</strong> or set a 2-order weekly cap —
           the cap keeps your savings rate at 47%.
         </div>
       </div>
@@ -402,10 +403,10 @@ const AskMock = () => (
 const RowsMock = () => (
   <div className="mr-rows">
     {[
-      { Icon: Receipt,      l: 'Blue Tokai · Coffee', v: '−₹480' },
-      { Icon: Bank,         l: 'Salary · Sep',        v: '+₹1,99,500' },
-      { Icon: DeviceMobile, l: 'Jio · Recharge',      v: '−₹399' },
-      { Icon: Storefront,   l: 'Amazon · Shopping',   v: '−₹4,150' },
+      { Icon: Receipt,      l: 'Blue Tokai · Coffee', v: `−${cs()}480` },
+      { Icon: Bank,         l: 'Salary · Sep',        v: `+${cs()}1,99,500` },
+      { Icon: DeviceMobile, l: 'Jio · Recharge',      v: `−${cs()}399` },
+      { Icon: Storefront,   l: 'Amazon · Shopping',   v: `−${cs()}4,150` },
     ].map(r => (
       <div className="mr-row" key={r.l}>
         <r.Icon size={16} weight="fill" /><span>{r.l}</span><b>{r.v}</b>
@@ -418,15 +419,15 @@ const RowsMock = () => (
 const ProdMock = () => (
   <div className="mr-prod">
     <div className="mr-prod-top">
-      <span className="mr-prod-badge"><TrendUp size={11} weight="bold" /> +₹7,150</span>
+      <span className="mr-prod-badge"><TrendUp size={11} weight="bold" /> +{cs()}7,150</span>
       <span className="mr-prod-tag">Watch this</span>
     </div>
     <div className="mr-prod-body">
       <b>Amazon · Shopping</b>
       <div className="mr-prod-row">
-        <span className="p">₹12,150</span>
+        <span className="p">{cs()}12,150</span>
         <span className="sku">3 ORDERS</span>
-        <span className="star">over ₹5,000 budget</span>
+        <span className="star">over {cs()}5,000 budget</span>
       </div>
     </div>
   </div>
@@ -436,10 +437,10 @@ const DataTableMock = () => (
   <div className="mr-datatable">
     <div className="mr-datatable-h"><span>Category</span><span>Spent</span><span>vs Aug</span></div>
     {[
-      { c: 'Groceries', s: '₹8,200',  d: '−4%',  up: false },
-      { c: 'Shopping',  s: '₹12,150', d: '+61%', up: true },
-      { c: 'Transport', s: '₹2,400',  d: '−12%', up: false },
-      { c: 'Dining',    s: '₹3,050',  d: '+8%',  up: true },
+      { c: 'Groceries', s: `${cs()}8,200`,  d: '−4%',  up: false },
+      { c: 'Shopping',  s: `${cs()}12,150`, d: '+61%', up: true },
+      { c: 'Transport', s: `${cs()}2,400`,  d: '−12%', up: false },
+      { c: 'Dining',    s: `${cs()}3,050`,  d: '+8%',  up: true },
     ].map(r => (
       <div className="mr-datatable-r" key={r.c}>
         <span>{r.c}</span><b>{r.s}</b>
@@ -453,9 +454,9 @@ const DropMock = () => (
   <div className="mr-drop">
     <div className="mr-drop-h"><span className="k">By category</span><CaretRight size={13} /></div>
     {[
-      { b: 'Needs',  s: '₹94,200 · 63% of spend' },
-      { b: 'Wants',  s: '₹38,400 · 26% of spend' },
-      { b: 'Saved',  s: '₹16,900 · 11% of income' },
+      { b: 'Needs',  s: `${cs()}94,200 · 63% of spend` },
+      { b: 'Wants',  s: `${cs()}38,400 · 26% of spend` },
+      { b: 'Saved',  s: `${cs()}16,900 · 11% of income` },
     ].map(r => (
       <div className="mr-drop-i" key={r.b}><b>{r.b}</b><span>{r.s}</span></div>
     ))}
@@ -471,7 +472,7 @@ const ChatBoxMock = () => (
     <div className="mr-chatbox-sug">
       <span className="lbl">Suggested</span>
       <span className="mr-chatbox-q">Which subscription have I not used since June?</span>
-      <span className="mr-chatbox-q">Am I on track to save ₹2L this year?</span>
+      <span className="mr-chatbox-q">Am I on track to save {cs()}2L this year?</span>
     </div>
   </div>
 );
@@ -505,7 +506,7 @@ const CAP_VIEW = [
       <p className="mr-cap-raw">HDFC: Rs 480.00 debited to BLUE TOKAI on 14-09. Avl bal Rs 2,31,450.</p>
       <div className="mr-cap-parsed">
         <span><em>Merchant</em>Blue Tokai</span>
-        <span><em>Amount</em>−₹480</span>
+        <span><em>Amount</em>−{cs()}480</span>
         <span><em>Category</em>Coffee</span>
       </div>
     </div>
@@ -513,7 +514,7 @@ const CAP_VIEW = [
   // CSV — columns snapping into place
   () => (
     <div className="mr-cap-view mr-cap-view--csv">
-      {[['01 Sep', 'Salary', '+₹1,99,500'], ['03 Sep', 'Jio', '−₹399'], ['07 Sep', 'Amazon', '−₹4,150']].map(r => (
+      {[['01 Sep', 'Salary', `+${cs()}1,99,500`], ['03 Sep', 'Jio', `−${cs()}399`], ['07 Sep', 'Amazon', `−${cs()}4,150`]].map(r => (
         <div className="mr-cap-row" key={r[0]}><span>{r[0]}</span><span>{r[1]}</span><b>{r[2]}</b></div>
       ))}
       <p className="mr-cap-note">4 columns mapped · 2 duplicates skipped</p>
@@ -522,7 +523,7 @@ const CAP_VIEW = [
   // Receipt — image → fields
   () => (
     <div className="mr-cap-view mr-cap-view--rcpt">
-      <div className="mr-cap-slip"><i /><i /><i /><b>TOTAL ₹1,240</b></div>
+      <div className="mr-cap-slip"><i /><i /><i /><b>TOTAL {cs()}1,240</b></div>
       <div className="mr-cap-parsed">
         <span><em>Store</em>More Supermarket</span>
         <span><em>Date</em>14 Sep</span>
@@ -532,7 +533,7 @@ const CAP_VIEW = [
   // By hand — the two-tap entry
   () => (
     <div className="mr-cap-view mr-cap-view--hand">
-      <div className="mr-cap-field"><em>Amount</em><b>₹ 320</b></div>
+      <div className="mr-cap-field"><em>Amount</em><b>{cs()} 320</b></div>
       <div className="mr-cap-chips">{['Groceries', 'Transport', 'Dining'].map((c, i) => (
         <span key={c} className={i === 1 ? 'on' : ''}>{c}</span>
       ))}</div>
@@ -608,12 +609,12 @@ function CaptureSection() {
 /* the varied product cards that fan out — a stat, a spark, a message, a couple
    of rows — so it reads as the product, not a chip grid */
 const ORBIT = [
-  { type: 'stat',  Icon: Wallet,  k: 'Balance',    v: '₹2,31,450', d: 'every account' },
-  { type: 'spark', k: 'Net · September', v: '+₹1,13,460', bars: [34, 52, 46, 68, 60, 84, 74] },
+  { type: 'stat',  Icon: Wallet,  k: 'Balance',    v: `${cs()}2,31,450`, d: 'every account' },
+  { type: 'spark', k: 'Net · September', v: `+${cs()}1,13,460`, bars: [34, 52, 46, 68, 60, 84, 74] },
   { type: 'stat',  Icon: ChartPie, k: 'Saved this month', v: '47%', d: '+6 on August', up: true },
-  { type: 'chat',  q: 'Where did ₹18,400 go?', a: 'Shopping — three orders, one week.' },
+  { type: 'chat',  q: `Where did ${cs()}18,400 go?`, a: 'Shopping — three orders, one week.' },
   { type: 'stat',  Icon: Lock,    k: 'Bank logins', v: '0', d: 'now or ever' },
-  { type: 'rows',  k: 'Just landed', rows: [['Blue Tokai', '−₹480'], ['Salary', '+₹1,99,500']] },
+  { type: 'rows',  k: 'Just landed', rows: [['Blue Tokai', `−${cs()}480`], ['Salary', `+${cs()}1,99,500`]] },
   { type: 'prog',  k: 'Budgets', items: [['Groceries', 82], ['Shopping', 100]] },
   { type: 'stat',  Icon: Target,  k: 'Streak', v: '12 days', d: 'personal best', up: true },
 ];
@@ -871,7 +872,7 @@ const STEP_PANELS = [
         <div className="mr-step-window mr-step-window--dark">
           <div className="mr-step-win-bar"><i /><i /><i /><span>September recap</span></div>
           <DataTableMock />
-          <p className="mr-step-recap">Net <b>+₹1,13,460</b> · watch <b>Shopping</b> in October</p>
+          <p className="mr-step-recap">Net <b>+{cs()}1,13,460</b> · watch <b>Shopping</b> in October</p>
         </div>
       </div>
     ) },
@@ -1355,7 +1356,7 @@ export default function PrelandingPage() {
                 <motion.ul className="mr-hero-tags"
                   initial={WIPE_HIDDEN()} animate={WIPE_SHOWN()}
                   transition={{ duration: 0.9, delay: 0.8, ease: EXPO }}>
-                  <li>₹0 to start</li>
+                  <li>{cs()}0 to start</li>
                   <li>4-tap import</li>
                   <li>Your data stays yours</li>
                 </motion.ul>
@@ -1391,7 +1392,7 @@ export default function PrelandingPage() {
               </span>
             ))}
           </p>
-          <span className="mr-hero-band-k">No bank login · ₹0 to start</span>
+          <span className="mr-hero-band-k">No bank login · {cs()}0 to start</span>
         </div>
         <span className="mr-hero-seam" aria-hidden="true" />
       </section>

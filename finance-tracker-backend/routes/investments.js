@@ -5,6 +5,7 @@
 const router     = require('express').Router();
 const Investment = require('../models/Investment');
 const protect    = require('../middleware/protect');
+const { pick } = require('../lib/http');
 
 router.use(protect);
 
@@ -48,7 +49,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const inv = await Investment.findOneAndUpdate(
       { _id: req.params.id, userId: req.user.id },
-      { $set: req.body },
+      { $set: pick(req.body, ["name","type","investedAmount","currentValue","units","purchaseDate","notes","symbol","color"]) },
       { new: true, runValidators: true }
     );
     if (!inv) return res.status(404).json({ error: 'Investment not found.' });

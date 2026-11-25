@@ -8,6 +8,7 @@ import {
 } from '@phosphor-icons/react';
 import { fetchTransactions, deleteTransaction } from '../api/transactions';
 import PageHeader from '../components/ui/PageHeader';
+import { cs, nl } from '@/lib/money';
 
 const RecurringPage = () => {
   const qc = useQueryClient();
@@ -54,11 +55,11 @@ const RecurringPage = () => {
                   <td style={{ color: 'var(--text-2)' }}>{t.category}</td>
                   <td style={{ color: 'var(--text-3)' }}>{t.description || <span style={{ fontStyle: 'italic' }}>—</span>}</td>
                   <td style={{ fontWeight: 600, color: t.type === 'income' ? 'var(--brand)' : 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
-                    ₹{t.amount.toLocaleString('en-IN')}
+                    {cs()}{t.amount.toLocaleString(nl())}
                   </td>
                   <td><span className="n-tag n-tag-blue">{t.frequency}</span></td>
                   <td style={{ color: 'var(--text-3)', fontSize: '12px' }}>
-                    {new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(t.date).toLocaleDateString(nl(), { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <motion.button

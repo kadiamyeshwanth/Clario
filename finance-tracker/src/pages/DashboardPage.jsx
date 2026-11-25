@@ -55,16 +55,11 @@ import { getPersonalityVisual } from '../lib/personality';
 import { useAuth }   from '../context/AuthContext';
 import client        from '../api/client';
 import toast         from 'react-hot-toast';
+import { cs, nl, short } from '@/lib/money';
 
 // ── Financial personality avatars ─────────────────────────────────────────────
 /* Compact money label for tile deltas: ₹1.2L / ₹93k / ₹640 */
-const inrShort = (n) => {
-  const v = Math.abs(n);
-  if (v >= 1e7) return `₹${(v / 1e7).toFixed(1)}Cr`;
-  if (v >= 1e5) return `₹${(v / 1e5).toFixed(1)}L`;
-  if (v >= 1e3) return `₹${Math.round(v / 1e3)}k`;
-  return `₹${Math.round(v)}`;
-};
+const inrShort = (n) => short(n);
 
 // ── Mood options ──────────────────────────────────────────────────────────────
 const MOODS = [
@@ -93,7 +88,7 @@ const StatCard = ({ label, value, icon: Icon, subtext, valueColor }) => (
       </div>
     </div>
     <div style={{ fontSize: '26px', fontWeight: 700, color: valueColor || 'var(--text)', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-      <AnimatedCounter value={value} prefix="₹" duration={1.0} />
+      <AnimatedCounter value={value} prefix={`${cs()}`} duration={1.0} />
     </div>
     {subtext && <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '3px' }}>{subtext}</div>}
   </motion.div>
@@ -286,7 +281,7 @@ const DashboardPage = () => {
     const spendMap = txns.filter(t => t.type === 'expense')
       .reduce((acc, t) => { acc[t.category] = (acc[t.category] || 0) + t.amount; return acc; }, {});
     return budgets
-      .map(b => ({ ...b, spent: spendMap[b.category] || 0, pct: ((spendMap[b.category] || 0) / b.limit) * 100 }))
+      .map(b => ({ ...b, spent: b.spent ?? (spendMap[b.category] || 0), pct: b.pct ?? ((spendMap[b.category] || 0) / b.limit) * 100 }))
       .filter(b => b.pct >= 80)
       .sort((a, b) => b.pct - a.pct);
   }, [budgets, txns]);
@@ -302,7 +297,7 @@ const DashboardPage = () => {
         icon: <Wallet size={16} />,
         tone: b.pct >= 100 ? 'var(--red)' : 'var(--brand)',
         title: b.pct >= 100 ? `${b.category} over budget` : `${b.category} nearing limit`,
-        description: `${Math.round(b.pct)}% of ₹${b.limit.toLocaleString('en-IN')} spent`,
+        description: `${Math.round(b.pct)}% of ${cs()}${b.limit.toLocaleString(nl())} spent`,
         time: 'Today',
       });
     });
@@ -323,8 +318,8 @@ const DashboardPage = () => {
         icon: <CreditCard size={16} />,
         tone: t.type === 'income' ? 'var(--brand)' : 'var(--text-3)',
         title: t.merchant || t.category,
-        description: `${t.type === 'income' ? '+' : '−'}₹${t.amount.toLocaleString('en-IN')} · ${t.category}`,
-        time: new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+        description: `${t.type === 'income' ? '+' : '−'}${cs()}${t.amount.toLocaleString(nl())} · ${t.category}`,
+        time: new Date(t.date).toLocaleDateString(nl(), { day: 'numeric', month: 'short' }),
       });
     });
     return items;
@@ -429,7 +424,7 @@ const DashboardPage = () => {
               Welcome back, {currentUser?.username}
             </h1>
             <p className="dash-sub">
-              Here is your account activity for {new Date().toLocaleDateString('en-IN', { month: 'long' })}.
+              Here is your account activity for {new Date().toLocaleDateString(nl(), { month: 'long' })}.
             </p>
           </div>
 
@@ -459,7 +454,7 @@ const DashboardPage = () => {
           />
           <StatTile
             index={1} tone="white"
-            label="Monthly income" sub={new Date().toLocaleDateString('en-IN', { month: 'long' })}
+            label="Monthly income" sub={new Date().toLocaleDateString(nl(), { month: 'long' })}
             value={income} icon={ChartLineUp} to="/transactions"
           />
           <AiTip
@@ -526,7 +521,7 @@ const DashboardPage = () => {
                     {recent.map(t => (
                       <tr key={t.id || t._id}>
                         <td style={{ color: 'var(--text-3)', fontSize: '12px', whiteSpace: 'nowrap' }}>
-                          {new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          {new Date(t.date).toLocaleDateString(nl(), { day: 'numeric', month: 'short' })}
                         </td>
                         <td style={{ maxWidth: '180px' }}>
                           {t.merchant && <div style={{ fontSize: '13px', color: 'var(--text)', fontWeight: 500 }}>{t.merchant}</div>}
@@ -538,7 +533,7 @@ const DashboardPage = () => {
                           <span className="n-tag n-tag-gray">{t.category}</span>
                         </td>
                         <td className="money" style={{ textAlign: 'right', fontWeight: 600, color: t.type === 'income' ? 'var(--brand)' : 'var(--text)', fontSize: '13px', whiteSpace: 'nowrap' }}>
-                          {t.type === 'income' ? '+' : '−'}₹{t.amount.toLocaleString('en-IN')}
+                          {t.type === 'income' ? '+' : '−'}{cs()}{t.amount.toLocaleString(nl())}
                         </td>
                       </tr>
                     ))}
@@ -559,26 +554,26 @@ const DashboardPage = () => {
                 <ul className="dash-insight-list">
                   <li>
                     <span className="dash-insight-k">Spent</span>
-                    <span className="dash-insight-v money">₹{Math.round(monthInsights.spent).toLocaleString('en-IN')}</span>
+                    <span className="dash-insight-v money">{cs()}{Math.round(monthInsights.spent).toLocaleString(nl())}</span>
                     <span className="dash-insight-note">{monthInsights.count} transactions logged</span>
                   </li>
                   {monthInsights.topCat && (
                     <li>
                       <span className="dash-insight-k">Top category</span>
                       <span className="dash-insight-v">{monthInsights.topCat.name}</span>
-                      <span className="dash-insight-note">₹{Math.round(monthInsights.topCat.amount).toLocaleString('en-IN')}</span>
+                      <span className="dash-insight-note">{cs()}{Math.round(monthInsights.topCat.amount).toLocaleString(nl())}</span>
                     </li>
                   )}
                   {monthInsights.biggest && (
                     <li>
                       <span className="dash-insight-k">Biggest expense</span>
                       <span className="dash-insight-v">{monthInsights.biggest.merchant || monthInsights.biggest.category}</span>
-                      <span className="dash-insight-note">₹{Math.round(monthInsights.biggest.amount).toLocaleString('en-IN')}</span>
+                      <span className="dash-insight-note">{cs()}{Math.round(monthInsights.biggest.amount).toLocaleString(nl())}</span>
                     </li>
                   )}
                   <li>
                     <span className="dash-insight-k">Savings rate</span>
-                    <span className="dash-insight-v" style={{ color: savingsRate >= 20 ? 'var(--green)' : savingsRate >= 0 ? 'var(--text)' : 'var(--red)' }}>{savingsRate}%</span>
+                    <span className="dash-insight-v" style={{ color: savingsRate >= 20 ? 'var(--green)' : savingsRate >= 0 ? 'var(--text)' : 'var(--red)' }}>{savingsRate < -100 ? '< −100' : savingsRate}%</span>
                     <span className="dash-insight-note">{inrShort(net)} kept</span>
                   </li>
                 </ul>
@@ -603,7 +598,7 @@ const DashboardPage = () => {
                         <li key={e._id || e.id}>
                           <MIcon size={15} weight="fill" style={{ color: 'var(--brand)', flexShrink: 0, marginTop: '1px' }} />
                           <div style={{ minWidth: 0 }}>
-                            <span className="dash-journal-date">{new Date(e.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                            <span className="dash-journal-date">{new Date(e.date).toLocaleDateString(nl(), { weekday: 'short', day: 'numeric', month: 'short' })}</span>
                             <span className="dash-journal-text">{e.content}</span>
                           </div>
                         </li>

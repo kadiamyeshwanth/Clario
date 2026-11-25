@@ -26,6 +26,7 @@ import { useTheme } from '../context/ThemeContext';
 import {
   ChartFrame, SkeuoDefs, RaisedBar, RaisedBarH, SkeuoTooltipSlot, useChartTokens,
 } from '../components/charts/SkeuoChart';
+import { cs, nl, short } from '@/lib/money';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PERIODS = [
@@ -33,14 +34,8 @@ const PERIODS = [
   { value: '6m', label: '6M' }, { value: '1y', label: '1Y' },
 ];
 
-const inr = (n) => `₹${Math.round(Math.abs(n)).toLocaleString('en-IN')}`;
-const inrShort = (n) => {
-  const v = Math.abs(n);
-  if (v >= 1e7) return `₹${(v / 1e7).toFixed(1)}Cr`;
-  if (v >= 1e5) return `₹${(v / 1e5).toFixed(1)}L`;
-  if (v >= 1e3) return `₹${Math.round(v / 1e3)}k`;
-  return `₹${Math.round(v)}`;
-};
+const inr = (n) => `${cs()}${Math.round(Math.abs(n)).toLocaleString(nl())}`;
+const inrShort = (n) => short(n);
 
 /* One headline figure, sharing the dashboard's tile anatomy. */
 const Metric = ({ icon: Icon, label, value, sub, accent = false, index = 0 }) => (
@@ -108,7 +103,7 @@ export default function AnalyticsPage() {
     const sm = filt.filter(x => x.type === 'expense')
       .reduce((acc, x) => { acc[x.category] = (acc[x.category] || 0) + x.amount; return acc; }, {});
     return budgets
-      .map(b => ({ ...b, spent: sm[b.category] || 0, pct: Math.min(((sm[b.category] || 0) / b.limit) * 100, 100) }))
+      .map(b => ({ ...b, spent: b.spent ?? (sm[b.category] || 0), pct: Math.min(b.pct ?? ((sm[b.category] || 0) / b.limit) * 100, 100) }))
       .sort((a, b) => b.pct - a.pct);
   }, [budgets, filt]);
 

@@ -4,7 +4,7 @@
  * fraud flag badges, CSV import, receipt scanner trigger,
  * sortable table, infinite scroll load-more, and filter panel.
  */
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -32,6 +32,8 @@ import {
   ChatText as MessageSquare,
 } from '@phosphor-icons/react';
 import { fetchTransactionsPaged, addTransaction, updateTransaction, deleteTransaction } from '../api/transactions';
+import { fetchWallets } from '../api/wallets';
+import { CURRENCY_CODES, currencyCode, moneyIn } from '../lib/money';
 import { fetchCategories } from '../api/categories';
 import { useAuth } from '../context/AuthContext';
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../constants/categories';
@@ -40,10 +42,13 @@ import CSVImportModal from '../components/ui/CSVImportModal';
 import ReceiptScannerModal from '../components/ui/ReceiptScannerModal';
 import SMSImportModal from '../components/ui/SMSImportModal';
 import client from '../api/client';
+import { cs, nl } from '@/lib/money';
 
 const LIMIT = 25;
 
 const BLANK = {
+  walletId: '',
+  currency: '',
   type: 'expense',
   category: EXPENSE_CATEGORIES[0],
   amount: '',
@@ -143,14 +148,27 @@ const TransactionsPage = () => {
   const updateMut = useMutation({ mutationFn: updateTransaction, onSuccess: () => { invalidate(); toast.success('Updated'); reset(); },           onError: () => toast.error('Failed to update') });
   const deleteMut = useMutation({ mutationFn: deleteTransaction, onSuccess: () => { invalidate(); toast.success('Deleted'); },                    onError: () => toast.error('Failed to delete') });
 
-  const reset = () => { setForm(BLANK); setEditingId(null); setShowForm(false); };
+  // Accounts for the "paid from" picker; the default account is preselected.
+  const { data: walletRes } = useQuery({ queryKey: ['wallets'], queryFn: fetchWallets, staleTime: 60_000 });
+  const wallets = walletRes?.data || [];
+  const defaultWalletId = wallets.find(w => w.isDefault)?.id || '';
+  const blankForm = () => ({ ...BLANK, walletId: defaultWalletId });
+  // Preselect the default account for new entries once accounts have loaded.
+  useEffect(() => {
+    if (!editingId && defaultWalletId) setForm(f => (f.walletId || f.amount ? f : { ...f, walletId: defaultWalletId }));
+  }, [defaultWalletId, editingId]);
+
+  const reset = () => { setForm(blankForm()); setEditingId(null); setShowForm(false); };
 
   const handleEdit = (t) => {
     setEditingId(t.id || t._id);
     setForm({
       type:        t.type,
       category:    t.category,
-      amount:      String(t.amount),
+      // A foreign-currency row is edited in the currency it was paid in.
+      amount:      String(t.originalAmount ?? t.amount),
+      currency:    t.originalCurrency || '',
+      walletId:    t.walletId || '',
       date:        t.date?.split('T')[0] || t.date,
       description: t.description || '',
       merchant:    t.merchant || '',
@@ -166,11 +184,14 @@ const TransactionsPage = () => {
     e.preventDefault();
     if (!form.amount || parseFloat(form.amount) <= 0) { toast.error('Enter a valid amount'); return; }
     const tagsArr = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    const { currency, walletId, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
       amount: parseFloat(form.amount),
       tags: tagsArr,
       username: currentUser.username,
+      walletId: walletId || null,
+      ...(currency && currency !== currencyCode() ? { currency } : editingId ? { currency: currencyCode() } : {}),
     };
     editingId ? updateMut.mutate({ id: editingId, ...payload }) : addMut.mutate(payload);
   };
@@ -270,7 +291,7 @@ const TransactionsPage = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="n-label">Amount (₹)</label>
+                    <label className="n-label">Amount ({form.currency || cs()})</label>
                     <input className="n-input" style={{ height: '34px' }} type="number"
                       min="0.01" step="0.01" placeholder="0.00"
                       value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required />
@@ -279,6 +300,25 @@ const TransactionsPage = () => {
                     <label className="n-label">Date</label>
                     <input className="n-input" style={{ height: '34px' }} type="date"
                       value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} required />
+                  </div>
+                </div>
+
+                {/* Account + currency: the balance of the chosen account moves with this entry */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label className="n-label">{form.type === 'income' ? 'Into account' : 'Paid from'}</label>
+                    <select className="n-input" style={{ height: '34px' }} value={form.walletId || ''}
+                      onChange={e => setForm({ ...form, walletId: e.target.value })}>
+                      <option value="">No account</option>
+                      {wallets.map(w => <option key={w.id} value={w.id}>{w.name} · {moneyIn(w.balance, w.currency)}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="n-label">Currency</label>
+                    <select className="n-input" style={{ height: '34px' }} value={form.currency || currencyCode()}
+                      onChange={e => setForm({ ...form, currency: e.target.value === currencyCode() ? '' : e.target.value })}>
+                      {CURRENCY_CODES.map(c => <option key={c} value={c}>{c}{c === currencyCode() ? ' (your currency)' : ''}</option>)}
+                    </select>
                   </div>
                 </div>
 
@@ -477,7 +517,7 @@ const TransactionsPage = () => {
                   <tr key={t.id || t._id}>
                     {/* Date */}
                     <td style={{ color: 'var(--text-3)', fontSize: '12px', whiteSpace: 'nowrap' }}>
-                      {new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {new Date(t.date).toLocaleDateString(nl(), { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
 
                     {/* Type */}
@@ -527,7 +567,7 @@ const TransactionsPage = () => {
                       whiteSpace: 'nowrap',
                       textAlign: 'right',
                     }}>
-                      {t.type === 'income' ? '+' : '−'}₹{t.amount.toLocaleString('en-IN')}
+                      {t.type === 'income' ? '+' : '−'}{cs()}{t.amount.toLocaleString(nl())}{t.originalCurrency && <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-3)', fontWeight: 400 }}>{moneyIn(t.originalAmount, t.originalCurrency)}</span>}
                     </td>
 
                     {/* Actions */}

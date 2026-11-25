@@ -29,6 +29,7 @@ import { fetchPersonality, fetchPredictions, fetchSpendingPatterns } from '../ap
 import { sendChatMessage, getRoast, getInvestmentAdvice } from '../api/ai';
 import PageHeader from '../components/ui/PageHeader';
 import toast from 'react-hot-toast';
+import { cs, nl } from '@/lib/money';
 
 // ─── Local rule-based insight generator (same as before) ─────────────────────
 const generateInsights = ({ txns, budgets, goals }) => {
@@ -50,32 +51,32 @@ const generateInsights = ({ txns, budgets, goals }) => {
 
   if (lastMonthExp > 0) {
     const pct = ((thisMonthExp - lastMonthExp) / lastMonthExp) * 100;
-    if (Math.abs(pct) >= 5) insights.push({ id: 'mom-expense', type: pct > 0 ? 'warning' : 'positive', icon: pct > 0 ? TrendingUp : TrendingDown, title: pct > 0 ? `Spending up ${pct.toFixed(0)}% this month` : `Spending down ${Math.abs(pct).toFixed(0)}% this month`, body: pct > 0 ? `You spent ₹${thisMonthExp.toLocaleString('en-IN')} vs ₹${lastMonthExp.toLocaleString('en-IN')} last month.` : `Great discipline! You spent ₹${Math.abs(thisMonthExp - lastMonthExp).toLocaleString('en-IN')} less than last month.` });
+    if (Math.abs(pct) >= 5) insights.push({ id: 'mom-expense', type: pct > 0 ? 'warning' : 'positive', icon: pct > 0 ? TrendingUp : TrendingDown, title: pct > 0 ? `Spending up ${pct.toFixed(0)}% this month` : `Spending down ${Math.abs(pct).toFixed(0)}% this month`, body: pct > 0 ? `You spent ${cs()}${thisMonthExp.toLocaleString(nl())} vs ${cs()}${lastMonthExp.toLocaleString(nl())} last month.` : `Great discipline! You spent ${cs()}${Math.abs(thisMonthExp - lastMonthExp).toLocaleString(nl())} less than last month.` });
   }
   const topCat = Object.entries(catMap).sort((a, b) => b[1] - a[1])[0];
   if (topCat) {
     const [cat, amt] = topCat;
     const spike = catMapLast[cat] ? ((amt - catMapLast[cat]) / catMapLast[cat]) * 100 : 0;
-    if (spike >= 20) insights.push({ id: 'cat-spike', type: 'warning', icon: AlertTriangle, title: `${cat} spending up ${spike.toFixed(0)}%`, body: `You spent ₹${amt.toLocaleString('en-IN')} on ${cat} vs ₹${catMapLast[cat].toLocaleString('en-IN')} last month.` });
-    else insights.push({ id: 'top-cat', type: 'info', icon: Lightbulb, title: `Top category: ${cat}`, body: `₹${amt.toLocaleString('en-IN')} spent on ${cat} this month.` });
+    if (spike >= 20) insights.push({ id: 'cat-spike', type: 'warning', icon: AlertTriangle, title: `${cat} spending up ${spike.toFixed(0)}%`, body: `You spent ${cs()}${amt.toLocaleString(nl())} on ${cat} vs ${cs()}${catMapLast[cat].toLocaleString(nl())} last month.` });
+    else insights.push({ id: 'top-cat', type: 'info', icon: Lightbulb, title: `Top category: ${cat}`, body: `${cs()}${amt.toLocaleString(nl())} spent on ${cat} this month.` });
   }
   if (totalInc > 0) {
-    if (savingsRate < 0) insights.push({ id: 'negative-savings', type: 'danger', icon: AlertTriangle, title: 'Spending exceeds income', body: `You're spending ₹${Math.abs(totalInc - totalExp).toLocaleString('en-IN')} more than you earn.` });
+    if (savingsRate < 0) insights.push({ id: 'negative-savings', type: 'danger', icon: AlertTriangle, title: 'Spending exceeds income', body: `You're spending ${cs()}${Math.abs(totalInc - totalExp).toLocaleString(nl())} more than you earn.` });
     else if (savingsRate < 10) insights.push({ id: 'low-savings', type: 'warning', icon: TrendingDown, title: `Low savings rate (${savingsRate.toFixed(0)}%)`, body: `Aim for 20%+. Try cutting back on your top 1-2 categories.` });
-    else if (savingsRate >= 20) insights.push({ id: 'good-savings', type: 'positive', icon: CheckCircle2, title: `Excellent savings rate — ${savingsRate.toFixed(0)}%`, body: `You're saving ₹${(totalInc - totalExp).toLocaleString('en-IN')} overall. Consider investing the surplus.` });
+    else if (savingsRate >= 20) insights.push({ id: 'good-savings', type: 'positive', icon: CheckCircle2, title: `Excellent savings rate — ${savingsRate.toFixed(0)}%`, body: `You're saving ${cs()}${(totalInc - totalExp).toLocaleString(nl())} overall. Consider investing the surplus.` });
   }
   const spendMap = {};
   expenses.forEach(t => { spendMap[t.category] = (spendMap[t.category] || 0) + t.amount; });
   const exceeded = budgets.filter(b => (spendMap[b.category] || 0) > b.limit);
-  if (exceeded.length > 0) insights.push({ id: 'budget-exceeded', type: 'danger', icon: AlertTriangle, title: `${exceeded.length} budget${exceeded.length > 1 ? 's' : ''} exceeded`, body: exceeded.map(b => `${b.category}: ₹${(spendMap[b.category] || 0).toLocaleString('en-IN')} / ₹${b.limit.toLocaleString('en-IN')}`).join(' · ') });
+  if (exceeded.length > 0) insights.push({ id: 'budget-exceeded', type: 'danger', icon: AlertTriangle, title: `${exceeded.length} budget${exceeded.length > 1 ? 's' : ''} exceeded`, body: exceeded.map(b => `${b.category}: ${cs()}${(spendMap[b.category] || 0).toLocaleString(nl())} / ${cs()}${b.limit.toLocaleString(nl())}`).join(' · ') });
   goals.forEach(g => {
     if (!g.deadline) return;
     const daysLeft = Math.ceil((new Date(g.deadline) - now) / 86400000);
     const pct = (g.currentAmount / g.targetAmount) * 100;
-    if (daysLeft > 0 && daysLeft <= 30 && pct < 80) insights.push({ id: `goal-${g._id}`, type: 'warning', icon: AlertTriangle, title: `Goal "${g.name}" deadline in ${daysLeft} days`, body: `${pct.toFixed(0)}% funded. Need ₹${(g.targetAmount - g.currentAmount).toLocaleString('en-IN')} more.` });
+    if (daysLeft > 0 && daysLeft <= 30 && pct < 80) insights.push({ id: `goal-${g._id}`, type: 'warning', icon: AlertTriangle, title: `Goal "${g.name}" deadline in ${daysLeft} days`, body: `${pct.toFixed(0)}% funded. Need ${cs()}${(g.targetAmount - g.currentAmount).toLocaleString(nl())} more.` });
   });
   const largest = [...txns].sort((a, b) => b.amount - a.amount)[0];
-  if (largest) insights.push({ id: 'largest-txn', type: 'info', icon: ArrowUpRight, title: `Largest transaction: ₹${largest.amount.toLocaleString('en-IN')}`, body: `${largest.description || largest.category} on ${new Date(largest.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })}` });
+  if (largest) insights.push({ id: 'largest-txn', type: 'info', icon: ArrowUpRight, title: `Largest transaction: ${cs()}${largest.amount.toLocaleString(nl())}`, body: `${largest.description || largest.category} on ${new Date(largest.date).toLocaleDateString(nl(), { day: 'numeric', month: 'long' })}` });
   return insights;
 };
 
@@ -158,9 +159,9 @@ const PredictionsCard = ({ pred }) => {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
         {[
-          { label: 'Projected Expenses', value: `₹${pred.projectedExpense.toLocaleString('en-IN')}`, color: 'var(--red)' },
-          { label: 'Projected Savings', value: `₹${Math.abs(pred.projectedSavings).toLocaleString('en-IN')}`, color: pred.projectedSavings >= 0 ? 'var(--green)' : 'var(--red)' },
-          { label: 'Daily Spend Rate', value: `₹${pred.dailySpendRate.toLocaleString('en-IN')}/day`, color: 'var(--text)' },
+          { label: 'Projected Expenses', value: `${cs()}${pred.projectedExpense.toLocaleString(nl())}`, color: 'var(--red)' },
+          { label: 'Projected Savings', value: `${cs()}${Math.abs(pred.projectedSavings).toLocaleString(nl())}`, color: pred.projectedSavings >= 0 ? 'var(--green)' : 'var(--red)' },
+          { label: 'Daily Spend Rate', value: `${cs()}${pred.dailySpendRate.toLocaleString(nl())}/day`, color: 'var(--text)' },
           { label: 'Days Left', value: `${pred.daysLeft} days`, color: 'var(--text-3)' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 'var(--r)', border: '1px solid var(--border)' }}>
@@ -298,7 +299,9 @@ const AIInsightsPage = () => {
   // Chat state
   const [messages, setMessages] = useState([{
     role: 'assistant',
-    content: 'Hi, I\'m **Mira**. I read your transactions and answer questions about them — nothing leaves your account.\n\nTry *"how much did I spend on Food last month?"* or *"can I afford a ₹40,000 laptop?"*',
+    content: `Hi, I'm **Mira**. I read your transactions and answer questions about them — nothing leaves your account.
+
+Try *"how much did I spend on Food last month?"* or *"can I afford a ${cs()}40,000 laptop?"*`,
   }]);
   const [input, setInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);

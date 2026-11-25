@@ -17,6 +17,7 @@ import {
 } from '@phosphor-icons/react';
 import { fetchSubscriptions, addSubscription, updateSubscription, deleteSubscription } from '../api/subscriptions';
 import PageHeader from '../components/ui/PageHeader';
+import { cs, nl } from '@/lib/money';
 
 // ── Known service logos (emoji map) ───────────────────────────────────────────
 const SERVICE_LOGOS = {
@@ -103,13 +104,13 @@ const SubCard = ({ sub, onEdit, onDelete }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
         <div>
           <span style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
-            ₹{sub.amount.toLocaleString('en-IN')}
+            {cs()}{sub.amount.toLocaleString(nl())}
           </span>
           <span style={{ fontSize: '12px', color: 'var(--text-3)', marginLeft: '4px' }}>/ {sub.billingCycle}</span>
         </div>
         {sub.billingCycle !== 'monthly' && (
           <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
-            ≈ ₹{sub.monthlyEquivalent?.toLocaleString('en-IN')}/mo
+            ≈ {cs()}{sub.monthlyEquivalent?.toLocaleString(nl())}/mo
           </span>
         )}
       </div>
@@ -125,7 +126,7 @@ const SubCard = ({ sub, onEdit, onDelete }) => {
               ? 'Renews tomorrow'
               : sub.daysUntilRenewal != null && sub.daysUntilRenewal <= 7
               ? `Renews in ${sub.daysUntilRenewal} days`
-              : `Renews ${new Date(sub.renewalDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+              : `Renews ${new Date(sub.renewalDate).toLocaleDateString(nl(), { day: 'numeric', month: 'short', year: 'numeric' })}`
             }
           </span>
         </div>
@@ -153,7 +154,7 @@ const SubForm = ({ initial = EMPTY_FORM, onSave, onClose, isPending }) => {
           <input className="n-input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Netflix, Spotify" required />
         </div>
         <div>
-          <label className="n-label">Amount (₹)</label>
+          <label className="n-label">Amount ({cs()})</label>
           <input className="n-input" type="number" min="0" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="199" required />
         </div>
         <div>
@@ -237,8 +238,8 @@ const SubscriptionsPage = () => {
       {!isLoading && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px', marginBottom: '28px' }}>
           {[
-            { label: 'Monthly cost',    value: `₹${monthlyTotal?.toLocaleString('en-IN')}`, sub: `${activeSubs.length} active` },
-            { label: 'Yearly cost',     value: `₹${yearlyTotal?.toLocaleString('en-IN')}`,  sub: 'Projected total' },
+            { label: 'Monthly cost',    value: `${cs()}${monthlyTotal?.toLocaleString(nl())}`, sub: `${activeSubs.length} active` },
+            { label: 'Yearly cost',     value: `${cs()}${yearlyTotal?.toLocaleString(nl())}`,  sub: 'Projected total' },
             { label: 'Renewing soon',   value: renewingSoon.length,                         sub: 'Within 7 days', alert: renewingSoon.length > 0 },
           ].map(({ label, value, sub, alert }) => (
             <div key={label} style={{ padding: '16px 18px', border: `1px solid ${alert ? 'rgba(196,85,77,0.25)' : 'var(--border)'}`, borderRadius: 'var(--r-md)', background: alert ? 'rgba(196,85,77,0.03)' : 'var(--bg)' }}>

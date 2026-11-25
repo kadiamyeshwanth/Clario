@@ -16,6 +16,7 @@ import {
 import { fetchJournal, createJournalEntry, deleteJournalEntry } from '../api/journal';
 import PageHeader from '../components/ui/PageHeader';
 import toast from 'react-hot-toast';
+import { cs, nl } from '@/lib/money';
 
 const MOODS = [
   { key: 'happy',    Icon: Smiley,        label: 'Happy'   },
@@ -37,7 +38,7 @@ const PROMPTS = [
   'Am I on track with my budget this month?',
 ];
 
-const fmt = (n) => `₹${Math.abs(n || 0).toLocaleString('en-IN')}`;
+const fmt = (n) => `${cs()}${Math.abs(n || 0).toLocaleString(nl())}`;
 
 const JournalPage = () => {
   const qc = useQueryClient();
@@ -150,7 +151,7 @@ const JournalPage = () => {
                 <div>
                   <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '7px' }}>
                     {React.createElement(moodIcon(selectedEntry.mood), { size: 16, weight: 'fill', style: { color: 'var(--brand)' } })}
-                    {new Date(selectedEntry.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    {new Date(selectedEntry.date).toLocaleDateString(nl(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                   </div>
                   {(selectedEntry.totalSpentToday > 0 || selectedEntry.totalIncomeToday > 0) && (
                     <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '2px' }}>
@@ -198,7 +199,7 @@ const JournalPage = () => {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <MoodIcon size={17} weight="fill" style={{ color: 'var(--brand)' }} />
-                          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{new Date(e.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{new Date(e.date).toLocaleDateString(nl(), { weekday: 'short', day: 'numeric', month: 'short' })}</span>
                         </div>
                         {e.totalSpentToday > 0 && <span style={{ fontSize: '12px', color: 'var(--red)' }}>-{fmt(e.totalSpentToday)}</span>}
                       </div>

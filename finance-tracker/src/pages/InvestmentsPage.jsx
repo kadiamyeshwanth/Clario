@@ -18,6 +18,7 @@ import PageHeader from '../components/ui/PageHeader';
 import BrandLogo from '../components/ui/BrandLogo';
 import { queryStates } from '../components/ui/States';
 import toast from 'react-hot-toast';
+import { cs, nl } from '@/lib/money';
 
 const TYPES = [
   { key: 'stocks',      label: 'Stocks',        Icon: ChartLineUp },
@@ -39,7 +40,7 @@ const TYPES = [
 // palette already used for the Reports donut chart, so investment tags and
 // report segments read as the same colour language across the app.
 const COLORS = ['var(--brand)', '#F0A65A', '#B5533A', '#7C8B5A', '#4C8C8C', '#8A6D9E', '#C98A3C', '#6E6E6E', '#8C4A2F'];
-const fmt    = (n) => `₹${Math.abs(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+const fmt    = (n) => `${cs()}${Math.abs(n || 0).toLocaleString(nl(), { maximumFractionDigits: 0 })}`;
 const getType = (key) => TYPES.find(t => t.key === key) || TYPES[TYPES.length - 1];
 
 const BLANK = { name: '', type: 'mutual_fund', investedAmount: '', currentValue: '', units: '', purchaseDate: new Date().toISOString().slice(0,10), notes: '', symbol: '', color: 'var(--brand)' };
@@ -173,7 +174,7 @@ const InvestmentsPage = () => {
                         {inv.name} {inv.symbol && <span style={{ fontSize: '11px', color: 'var(--text-3)', background: 'var(--bg-secondary)', padding: '1px 5px', borderRadius: '4px', border: '1px solid var(--border)' }}>{inv.symbol}</span>}
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '2px' }}>
-                        {t.label} · {new Date(inv.purchaseDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {t.label} · {new Date(inv.purchaseDate).toLocaleDateString(nl(), { day: 'numeric', month: 'short', year: 'numeric' })}
                         {inv.units > 0 && ` · ${inv.units} units`}
                       </div>
                     </div>
@@ -281,11 +282,11 @@ const InvestmentsPage = () => {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', color: 'var(--text-3)', display: 'block', marginBottom: '5px' }}>Invested (₹) *</label>
+                    <label style={{ fontSize: '12px', color: 'var(--text-3)', display: 'block', marginBottom: '5px' }}>Invested ({cs()}) *</label>
                     <input type="number" className="n-input" value={form.investedAmount} onChange={e => setForm(p => ({ ...p, investedAmount: e.target.value }))} placeholder="0" style={{ width: '100%', fontSize: '13px' }} />
                   </div>
                   <div>
-                    <label style={{ fontSize: '12px', color: 'var(--text-3)', display: 'block', marginBottom: '5px' }}>Current Value (₹)</label>
+                    <label style={{ fontSize: '12px', color: 'var(--text-3)', display: 'block', marginBottom: '5px' }}>Current Value ({cs()})</label>
                     <input type="number" className="n-input" value={form.currentValue} onChange={e => setForm(p => ({ ...p, currentValue: e.target.value }))} placeholder="Same as invested" style={{ width: '100%', fontSize: '13px' }} />
                   </div>
                   <div>

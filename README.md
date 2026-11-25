@@ -68,6 +68,10 @@ Everything runs **without any paid AI API** — all intelligence is local, rule-
 
 ## 🆕 What's New
 
+> ### Clario v3 — web, Android & iOS
+> Accounts whose balances follow every transaction, 22 currencies with live exchange rates, split expenses with friends, saved challenges, push notifications, a full Android/iOS app (`mobile/`), and **SMS auto-import built into the Android app** — GPay, PhonePe, cards and bank SMS become transactions automatically. Plus rotating-token sessions, device management, data export, and a long list of fixes.
+> **Read the full guide — setup, deploy, API and testing: [`docs/CLARIO-V3.md`](docs/CLARIO-V3.md).** The previous version is kept in `legacy/`.
+
 > Major feature releases added since initial launch:
 
 | Feature | Description |

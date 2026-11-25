@@ -11,40 +11,36 @@ import {
   CircleNotch as Loader2,
   XCircle as XCircle,
 } from '@phosphor-icons/react';
+import { useAuth } from '../context/AuthContext';
 
 const OAuthCallbackPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const token    = searchParams.get('token');
-    const oauthErr = searchParams.get('error');
+  const { completeOAuth } = useAuth();
 
-    if (oauthErr === 'oauth' || !token) {
+  useEffect(() => {
+    // The backend redirects with a single-use, 60-second code — never a token —
+    // so nothing long-lived ever sits in the URL bar or browser history.
+    const code     = searchParams.get('code');
+    const oauthErr = searchParams.get('error');
+    window.history.replaceState(null, '', '/auth/callback');
+
+    if (oauthErr || !code) {
       setError('Google sign-in failed. Please try again or use email/password.');
       setTimeout(() => navigate('/login', { replace: true }), 3000);
       return;
     }
 
-    try {
-      // Decode the JWT payload (base64) to get username/email for AuthContext
-      const payload = JSON.parse(atob(token.split('.')[1]));
-
-      // Store token the same way AuthContext expects it
-      localStorage.setItem('finance_token', token);
-      localStorage.setItem('finance_user', JSON.stringify({
-        id:       payload.id,
-        username: payload.username,
-        email:    payload.email,
-      }));
-
-      // Hard-navigate to force AuthContext to re-read localStorage
-      window.location.href = '/dashboard';
-    } catch {
-      setError('Invalid token received. Please try again.');
-      setTimeout(() => navigate('/login', { replace: true }), 3000);
-    }
+    completeOAuth(code)
+      .then(() => navigate('/dashboard', { replace: true }))
+      .catch((err) => {
+        setError(err.response?.data?.error || 'This sign-in link has expired. Please try again.');
+        setTimeout(() => navigate('/login', { replace: true }), 3000);
+      });
+  // Runs once per redirect; the code is single-use.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

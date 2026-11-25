@@ -3,14 +3,15 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkle, ArrowUpRight } from '@phosphor-icons/react';
 import { prefersReducedMotion } from '../../lib/motion';
+import { cs, nl } from '@/lib/money';
 
-const inr = (n) => `₹${Math.round(Math.abs(n)).toLocaleString('en-IN')}`;
+const inr = (n) => `${cs()}${Math.round(Math.abs(n)).toLocaleString(nl())}`;
 const short = (n) => {
   const v = Math.abs(n);
-  if (v >= 1e7) return `₹${(v / 1e7).toFixed(1)}Cr`;
-  if (v >= 1e5) return `₹${(v / 1e5).toFixed(1)}L`;
-  if (v >= 1e3) return `₹${Math.round(v / 1e3)}k`;
-  return `₹${Math.round(v)}`;
+  if (v >= 1e7) return `${cs()}${(v / 1e7).toFixed(1)}Cr`;
+  if (v >= 1e5) return `${cs()}${(v / 1e5).toFixed(1)}L`;
+  if (v >= 1e3) return `${cs()}${Math.round(v / 1e3)}k`;
+  return `${cs()}${Math.round(v)}`;
 };
 
 /**

@@ -11,12 +11,16 @@ import {
   Star as Star,
   TrendUp as TrendingUp,
 } from '@phosphor-icons/react';
-import { fetchWallets, addWallet, updateWallet, deleteWallet } from '../api/wallets';
+import { fetchWallets, addWallet, updateWallet, deleteWallet, transferBetween } from '../api/wallets';
+import { CURRENCY_CODES, currencyCode, moneyIn } from '../lib/money';
+import { t } from '../lib/i18n';
+import { ArrowsLeftRight } from '@phosphor-icons/react';
 import { fetchTransactions } from '../api/transactions';
 import PageHeader from '../components/ui/PageHeader';
 import BrandLogo from '../components/ui/BrandLogo';
 import FloatingPaths from '../components/ui/FloatingPaths';
 import { queryStates } from '../components/ui/States';
+import { cs, nl } from '@/lib/money';
 
 const WALLET_TYPES = [
   { value: 'cash',       label: 'Cash' },
@@ -34,7 +38,7 @@ const WALLET_COLORS = ['var(--brand)', '#F0A65A', '#B5533A', '#7C8B5A', '#4C8C8C
 
 const getTypeConfig = (type) => WALLET_TYPES.find(t => t.value === type) || WALLET_TYPES[1];
 
-const EMPTY_FORM = { name: '', type: 'bank', balance: '', currency: 'INR', color: 'var(--brand)', isDefault: false, notes: '' };
+const EMPTY_FORM = { name: '', type: 'bank', balance: '', currency: currencyCode(), color: 'var(--brand)', isDefault: false, notes: '' };
 
 // ── Wallet card ───────────────────────────────────────────────────────────────
 const WalletCard = ({ wallet, onEdit, onDelete }) => {
@@ -82,7 +86,7 @@ const WalletCard = ({ wallet, onEdit, onDelete }) => {
         <div>
           <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}>Current balance</div>
           <div style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: isPositive ? 'var(--text)' : 'var(--red)' }}>
-            {!isPositive && '−'}₹{Math.abs(wallet.balance).toLocaleString('en-IN')}
+            {!isPositive && '−'}{moneyIn(wallet.balance, wallet.currency || currencyCode())}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '4px' }}>{wallet.currency}</div>
         </div>
@@ -110,8 +114,14 @@ const WalletForm = ({ initial = EMPTY_FORM, onSave, onClose, isPending }) => {
           </select>
         </div>
         <div>
-          <label className="n-label">Opening balance (₹)</label>
+          <label className="n-label">{initial.id ? 'Balance' : 'Opening balance'} ({form.currency || cs()})</label>
           <input className="n-input" type="number" step="0.01" value={form.balance} onChange={e => set('balance', e.target.value)} placeholder="0" />
+        </div>
+        <div>
+          <label className="n-label">Currency</label>
+          <select className="n-input" value={form.currency || currencyCode()} onChange={e => set('currency', e.target.value)}>
+            {CURRENCY_CODES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
         <div>
           <label className="n-label">Card color</label>
@@ -145,6 +155,8 @@ const WalletsPage = () => {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [tf, setTf] = useState({ fromWalletId: '', toWalletId: '', amount: '', note: '' });
 
   const walletsQuery = useQuery({ queryKey: ['wallets'], queryFn: fetchWallets });
   const { data: res = { data: [], totalBalance: 0 }, isLoading } = walletsQuery;
@@ -160,6 +172,11 @@ const WalletsPage = () => {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['wallets'] }); toast.success('Updated'); setEditing(null); },
     onError: e => toast.error(e.response?.data?.error || 'Failed to update'),
   });
+  const transferMut = useMutation({
+    mutationFn: transferBetween,
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ['wallets'] }); toast.success(r.message || 'Transfer done'); setShowTransfer(false); setTf({ fromWalletId: '', toWalletId: '', amount: '', note: '' }); },
+    onError: e => toast.error(e.response?.data?.error || 'Transfer failed'),
+  });
   const deleteMut = useMutation({
     mutationFn: deleteWallet,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['wallets'] }); toast.success('Wallet deleted'); },
@@ -171,10 +188,17 @@ const WalletsPage = () => {
       <PageHeader icon={Wallet} title="Wallets"
         subtitle="Manage your cash, bank accounts, and cards."
         action={
-          <motion.button whileHover={{ opacity: 0.85 }} whileTap={{ scale: 0.97 }}
-            className="n-btn n-btn-primary n-btn-sm" onClick={() => { setEditing(null); setShowForm(p => !p); }}>
-            <Plus size={13} /> Add wallet
-          </motion.button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {wallets?.length > 1 && (
+              <button className="n-btn n-btn-default n-btn-sm" onClick={() => { setShowTransfer(p => !p); setShowForm(false); setEditing(null); }}>
+                <ArrowsLeftRight size={13} /> {t('Transfer')}
+              </button>
+            )}
+            <motion.button whileHover={{ opacity: 0.85 }} whileTap={{ scale: 0.97 }}
+              className="n-btn n-btn-primary n-btn-sm" onClick={() => { setEditing(null); setShowTransfer(false); setShowForm(p => !p); }}>
+              <Plus size={13} /> Add wallet
+            </motion.button>
+          </div>
         }
       />
 
@@ -185,7 +209,7 @@ const WalletsPage = () => {
           <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '4px' }}>Net worth across all wallets</div>
             <div style={{ fontSize: '36px', fontWeight: 700, letterSpacing: '-0.03em', color: totalBalance >= 0 ? 'var(--text)' : 'var(--red)', fontVariantNumeric: 'tabular-nums' }}>
-              {totalBalance < 0 && '−'}₹{Math.abs(totalBalance).toLocaleString('en-IN')}
+              {totalBalance < 0 && '−'}{cs()}{Math.abs(totalBalance).toLocaleString(nl())}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'right', position: 'relative', zIndex: 1 }}>
@@ -196,6 +220,55 @@ const WalletsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Transfer between accounts — not income, not spending */}
+      <AnimatePresence>
+        {showTransfer && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '20px', marginBottom: '24px', background: 'var(--bg-secondary)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>Move money between accounts</span>
+                <button className="n-btn n-btn-ghost n-btn-sm" style={{ padding: '3px' }} onClick={() => setShowTransfer(false)} aria-label="Close"><X size={14} /></button>
+              </div>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (!tf.fromWalletId || !tf.toWalletId || tf.fromWalletId === tf.toWalletId) { toast.error('Pick two different accounts'); return; }
+                if (!(Number(tf.amount) > 0)) { toast.error('Enter an amount'); return; }
+                transferMut.mutate({ ...tf, amount: Number(tf.amount) });
+              }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                  <div>
+                    <label className="n-label">From</label>
+                    <select className="n-input" value={tf.fromWalletId} onChange={e => setTf({ ...tf, fromWalletId: e.target.value })} required>
+                      <option value="">Choose…</option>
+                      {wallets.map(w => <option key={w.id} value={w.id}>{w.name} · {moneyIn(w.balance, w.currency)}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="n-label">To</label>
+                    <select className="n-input" value={tf.toWalletId} onChange={e => setTf({ ...tf, toWalletId: e.target.value })} required>
+                      <option value="">Choose…</option>
+                      {wallets.filter(w => w.id !== tf.fromWalletId).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="n-label">Amount{tf.fromWalletId ? ` (${wallets.find(w => w.id === tf.fromWalletId)?.currency})` : ''}</label>
+                    <input className="n-input" type="number" min="0.01" step="0.01" value={tf.amount} onChange={e => setTf({ ...tf, amount: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label className="n-label">Note (optional)</label>
+                    <input className="n-input" value={tf.note} maxLength={200} onChange={e => setTf({ ...tf, note: e.target.value })} placeholder="e.g. Credit card bill" />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={() => setShowTransfer(false)} className="n-btn n-btn-default n-btn-sm">Cancel</button>
+                  <button type="submit" disabled={transferMut.isPending} className="n-btn n-btn-primary n-btn-sm">{transferMut.isPending ? 'Moving…' : 'Transfer'}</button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Form */}
       <AnimatePresence>

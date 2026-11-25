@@ -38,7 +38,7 @@ function analyse({ transactions, budgets, goals }) {
   // 2 · Budget control — 30
   const spendMap = txns.filter(t => t.type === 'expense')
     .reduce((a, t) => { a[t.category] = (a[t.category] || 0) + t.amount; return a; }, {});
-  const under = budgets.filter(b => (spendMap[b.category] || 0) < b.limit).length;
+  const under = budgets.filter(b => (b.state ? b.state !== 'over' : (spendMap[b.category] || 0) < b.limit)).length;
   const budgetPts = budgets.length > 0 ? Math.round((under / budgets.length) * 30) : 15;
 
   // 3 · Goal progress — 20

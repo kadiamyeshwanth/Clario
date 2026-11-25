@@ -24,6 +24,7 @@ import { fetchBudgets } from '../api/budgets';
 import PageHeader from '../components/ui/PageHeader';
 import { useTheme } from '../context/ThemeContext';
 import { chartTheme, SERIES, areaFill, INCOME_COLOR, SPEND_COLOR } from '../lib/chartTheme';
+import { cs, nl } from '@/lib/money';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend, PointElement, LineElement, Filler);
 
@@ -151,7 +152,7 @@ const ReportsPage = () => {
   const overviewBarData = {
     labels: ['Income', 'Expenses', 'Net'],
     datasets: [{
-      label: 'Amount (₹)', borderSkipped: false,
+      label: `Amount (${cs()})`, borderSkipped: false,
       data: [monthly.income, monthly.expenses, monthly.net],
       backgroundColor: [INCOME_COLOR, SPEND_COLOR, monthly.net >= 0 ? '#16A34A' : '#E5484D'],
       borderWidth: 0, borderRadius: 6, maxBarThickness: 52,
@@ -194,7 +195,7 @@ const ReportsPage = () => {
 
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(txns.map(({ type, category, amount, date, description }) =>
-      ({ Type: type, Category: category, Amount: amount, Date: new Date(date).toLocaleDateString('en-IN'), Description: description || '' })));
+      ({ Type: type, Category: category, Amount: amount, Date: new Date(date).toLocaleDateString(nl()), Description: description || '' })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
     // Summary sheet
@@ -313,7 +314,7 @@ const ReportsPage = () => {
               <div key={label} style={{ padding: '11px 13px', background: 'var(--bg-secondary)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}>{label}</div>
                 <div style={{ fontSize: '15px', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
-                  ₹{value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                  {cs()}{value.toLocaleString(nl(), { maximumFractionDigits: 0 })}
                 </div>
               </div>
             ))}
@@ -358,7 +359,7 @@ const ReportsPage = () => {
                 <div style={{ height: '190px', position: 'relative' }}>
                   <Doughnut data={doughnutData} options={doughnutOpts} />
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                    <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>₹{Math.round(monthly.expenses).toLocaleString('en-IN')}</span>
+                    <span style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{cs()}{Math.round(monthly.expenses).toLocaleString(nl())}</span>
                     <span style={{ fontSize: '10.5px', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>total spent</span>
                   </div>
                 </div>
@@ -371,7 +372,7 @@ const ReportsPage = () => {
                         {monthly.expenses > 0 ? Math.round((amt / monthly.expenses) * 100) : 0}%
                       </span>
                       <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', minWidth: '70px', textAlign: 'right' }}>
-                        ₹{Math.round(amt).toLocaleString('en-IN')}
+                        {cs()}{Math.round(amt).toLocaleString(nl())}
                       </span>
                     </div>
                   ))}
@@ -399,7 +400,7 @@ const ReportsPage = () => {
                         </div>
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--red)', fontVariantNumeric: 'tabular-nums' }}>
-                        ₹{amt.toLocaleString('en-IN')}
+                        {cs()}{amt.toLocaleString(nl())}
                       </td>
                       <td style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-3)' }}>
                         {allTime.expenses > 0 ? ((amt / allTime.expenses) * 100).toFixed(1) : 0}%
@@ -423,9 +424,9 @@ const ReportsPage = () => {
               {MONTH_NAMES[selectedMonth]} Summary
             </div>
             <StatRow label="Transactions"  value={monthTxns.length} />
-            <StatRow label="Income"        value={`₹${monthly.income.toLocaleString('en-IN')}`} highlight="var(--green)" />
-            <StatRow label="Expenses"      value={`₹${monthly.expenses.toLocaleString('en-IN')}`} highlight="var(--red)" />
-            <StatRow label="Net"           value={`₹${Math.abs(monthly.net).toLocaleString('en-IN')}`} highlight={monthly.net >= 0 ? 'var(--text)' : 'var(--red)'} />
+            <StatRow label="Income"        value={`${cs()}${monthly.income.toLocaleString(nl())}`} highlight="var(--green)" />
+            <StatRow label="Expenses"      value={`${cs()}${monthly.expenses.toLocaleString(nl())}`} highlight="var(--red)" />
+            <StatRow label="Net"           value={`${cs()}${Math.abs(monthly.net).toLocaleString(nl())}`} highlight={monthly.net >= 0 ? 'var(--text)' : 'var(--red)'} />
           </div>
 
           {/* All-time summary */}
@@ -433,9 +434,9 @@ const ReportsPage = () => {
             <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '6px' }}>
               All-time Summary
             </div>
-            <StatRow label="Total income"   value={`₹${allTime.income.toLocaleString('en-IN')}`} />
-            <StatRow label="Total expenses" value={`₹${allTime.expenses.toLocaleString('en-IN')}`} />
-            <StatRow label="Net savings"    value={`₹${Math.abs(allTime.net).toLocaleString('en-IN')}`} />
+            <StatRow label="Total income"   value={`${cs()}${allTime.income.toLocaleString(nl())}`} />
+            <StatRow label="Total expenses" value={`${cs()}${allTime.expenses.toLocaleString(nl())}`} />
+            <StatRow label="Net savings"    value={`${cs()}${Math.abs(allTime.net).toLocaleString(nl())}`} />
             <StatRow label="Savings rate"   value={allTime.income > 0 ? `${savingsRate}%` : '—'} />
             <StatRow label="Top category"   value={topCatAllTime?.[0] || '—'} />
             <StatRow label="Active goals"   value={goals.length} />

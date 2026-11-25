@@ -5,6 +5,7 @@
 const router = require('express').Router();
 const Subscription = require('../models/Subscription');
 const protect = require('../middleware/protect');
+const { pick } = require('../lib/http');
 
 router.use(protect);
 
@@ -61,7 +62,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const sub = await Subscription.findOneAndUpdate(
       { _id: req.params.id, userId: req.user.id },
-      { $set: req.body },
+      { $set: pick(req.body, ["name","amount","billingCycle","category","renewalDate","status","logo","notes"]) },
       { new: true, runValidators: true }
     );
     if (!sub) return res.status(404).json({ error: 'Subscription not found.' });

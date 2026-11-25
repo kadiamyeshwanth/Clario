@@ -19,3 +19,7 @@ export const deleteWallet = async (id) => {
   const { data } = await apiClient.delete(`/wallets/${id}`);
   return data;
 };
+
+// Move money between two of your own accounts (not income or spending).
+export const transferBetween = async (payload) => (await apiClient.post('/wallets/transfer', payload)).data;
+export const fetchTransfers = async () => (await apiClient.get('/wallets/transfers')).data;

@@ -27,6 +27,7 @@ import { fetchGoals }        from '../../api/goals';
 import {
   fetchNotifications, markAllRead, deleteNotification, clearAllNotifications,
 } from '../../api/notifications';
+import { cs, nl } from '@/lib/money';
 
 // ── Color map ──────────────────────────────────────────────────────────────
 const STYLES = {
@@ -56,8 +57,8 @@ const useClientAlerts = () => {
     // Goal alerts
     goals.forEach(g => {
       const pct = Math.min((g.currentAmount / g.targetAmount) * 100, 100);
-      if (pct >= 100) notes.push({ id: `goal-done-${g._id}`, type: 'success', icon: CheckCircle2, title: `Goal achieved — ${g.name}`, desc: `You've reached your ₹${g.targetAmount.toLocaleString('en-IN')} target.`, time: null, link: '/goals' });
-      else if (pct >= 90) notes.push({ id: `goal-close-${g._id}`, type: 'info', icon: Target, title: `Almost there — ${g.name}`, desc: `${pct.toFixed(0)}% funded · ₹${(g.targetAmount - g.currentAmount).toLocaleString('en-IN')} to go`, time: null, link: '/goals' });
+      if (pct >= 100) notes.push({ id: `goal-done-${g._id}`, type: 'success', icon: CheckCircle2, title: `Goal achieved — ${g.name}`, desc: `You've reached your ${cs()}${g.targetAmount.toLocaleString(nl())} target.`, time: null, link: '/goals' });
+      else if (pct >= 90) notes.push({ id: `goal-close-${g._id}`, type: 'info', icon: Target, title: `Almost there — ${g.name}`, desc: `${pct.toFixed(0)}% funded · ${cs()}${(g.targetAmount - g.currentAmount).toLocaleString(nl())} to go`, time: null, link: '/goals' });
     });
 
     // Upcoming recurring
@@ -79,7 +80,7 @@ const useClientAlerts = () => {
       if (nextFire) {
         const daysUntil = Math.ceil((nextFire - today) / 86_400_000);
         if (daysUntil >= 0 && daysUntil <= 7) {
-          notes.push({ id: `recurring-${r._id}`, type: 'recurring', icon: RefreshCcw, title: `${r.type === 'income' ? 'Income' : 'Payment'} due ${daysUntil === 0 ? 'today' : `in ${daysUntil}d`}`, desc: `${r.category} · ₹${r.amount.toLocaleString('en-IN')} (${r.frequency})`, time: nextFire, link: '/recurring' });
+          notes.push({ id: `recurring-${r._id}`, type: 'recurring', icon: RefreshCcw, title: `${r.type === 'income' ? 'Income' : 'Payment'} due ${daysUntil === 0 ? 'today' : `in ${daysUntil}d`}`, desc: `${r.category} · ${cs()}${r.amount.toLocaleString(nl())} (${r.frequency})`, time: nextFire, link: '/recurring' });
         }
       }
     });
@@ -205,7 +206,7 @@ const NotificationPanel = ({ open, onClose }) => {
                         <div className="notif-row-desc">{n.desc}</div>
                         {n.time && (
                           <div className="notif-row-time">
-                            {n.time.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                            {n.time.toLocaleDateString(nl(), { day: 'numeric', month: 'short' })}
                           </div>
                         )}
                       </div>

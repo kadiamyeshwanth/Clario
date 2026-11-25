@@ -19,6 +19,7 @@ import {
   Lightbulb,
 } from '@phosphor-icons/react';
 import toast from 'react-hot-toast';
+import { cs, nl } from '@/lib/money';
 
 // Lazy-load Tesseract to avoid bundling it if not used
 let tesseractLoaded = false;
@@ -118,7 +119,7 @@ const downscaleImage = (file) =>
 const parseAmount = (text) => {
   // Look for ₹ or Rs or INR followed by a number
   const patterns = [
-    /(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)/gi,
+    /(?:₹|Rs\.?|INR|\$|€|£|USD|EUR|GBP|AED)\s*([\d,]+(?:\.\d{1,2})?)/gi,
     /(?:total|amount|grand total|net amount|bill amount)[\s:]*(?:₹|Rs\.?)?\s*([\d,]+(?:\.\d{1,2})?)/gi,
     /([\d,]+(?:\.\d{2}))/g,
   ];
@@ -392,7 +393,7 @@ const ReceiptScannerModal = ({ onClose, onExtracted }) => {
                 {/* Extracted fields */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
                   {[
-                    { label: 'Amount',   value: extracted.amount ? `₹${extracted.amount.toLocaleString('en-IN')}` : null },
+                    { label: 'Amount',   value: extracted.amount ? `${cs()}${extracted.amount.toLocaleString(nl())}` : null },
                     { label: 'Date',     value: extracted.date },
                     { label: 'Merchant', value: extracted.merchant || null },
                   ].map(({ label, value }) => (
