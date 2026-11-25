@@ -26,6 +26,7 @@ import {
   Hash as Hash,
 } from '@phosphor-icons/react';
 import { fetchTransactions } from '../../api/transactions';
+import { cs, nl } from '@/lib/money';
 
 const PAGES = [
   { label: 'Dashboard',    to: '/dashboard',    icon: LayoutDashboard, desc: 'Financial overview' },
@@ -274,7 +275,7 @@ const CommandPalette = ({ open, onClose, initialQuery = '' }) => {
                             {item.description || item.category}
                           </div>
                           <div style={{ fontSize: '12px', color: 'var(--text-3)' }}>
-                            {item.category} · {new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                            {item.category} · {new Date(item.date).toLocaleDateString(nl(), { day: 'numeric', month: 'short' })}
                           </div>
                         </div>
                         <span style={{
@@ -282,7 +283,7 @@ const CommandPalette = ({ open, onClose, initialQuery = '' }) => {
                           color: item.type === 'income' ? 'var(--brand)' : 'var(--text)',
                           flexShrink: 0,
                         }}>
-                          {item.type === 'income' ? '+' : '−'}₹{item.amount?.toLocaleString('en-IN')}
+                          {item.type === 'income' ? '+' : '−'}{cs()}{item.amount?.toLocaleString(nl())}
                         </span>
                       </div>
                     </React.Fragment>

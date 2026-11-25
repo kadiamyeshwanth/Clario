@@ -23,6 +23,7 @@ import toast from 'react-hot-toast';
 import PageHeader from '../components/ui/PageHeader';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { cs, nl } from '@/lib/money';
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 const getFamily       = ()     => client.get('/family').then(r => r.data);
@@ -73,7 +74,7 @@ const MemberCard = ({ data, isOwner }) => (
         <div key={label} style={{ textAlign: 'center', padding: '8px', background: 'var(--bg-secondary)', borderRadius: 'var(--r-md)' }}>
           <div style={{ fontSize: '10px', color: 'var(--text-3)', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
           <div style={{ fontSize: '13px', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
-            ₹{Math.abs(value).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            {cs()}{Math.abs(value).toLocaleString(nl(), { maximumFractionDigits: 0 })}
           </div>
         </div>
       ))}
@@ -86,7 +87,7 @@ const MemberCard = ({ data, isOwner }) => (
         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
           {Object.entries(data.catMap).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([cat, amt]) => (
             <span key={cat} className="n-tag n-tag-gray" style={{ fontSize: '11px' }}>
-              {cat}: ₹{amt.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+              {cat}: {cs()}{amt.toLocaleString(nl(), { maximumFractionDigits: 0 })}
             </span>
           ))}
         </div>
@@ -247,7 +248,7 @@ const FamilyPage = () => {
             </div>
             <div style={{ padding: '16px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '14px' }}>
-                {[['Income', '₹1,84,000', 'var(--green)'], ['Spent', '₹1,12,400', 'var(--red)'], ['Net', '₹71,600', 'var(--brand)']].map(([l, v, c]) => (
+                {[['Income', `${cs()}1,84,000`, 'var(--green)'], ['Spent', `${cs()}1,12,400`, 'var(--red)'], ['Net', `${cs()}71,600`, 'var(--brand)']].map(([l, v, c]) => (
                   <div key={l} style={{ textAlign: 'center', padding: '10px 6px', background: 'var(--bg-secondary)', borderRadius: 'var(--r-md)' }}>
                     <div style={{ fontSize: '10px', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>{l}</div>
                     <div style={{ fontSize: '12px', fontWeight: 700, color: c, fontVariantNumeric: 'tabular-nums' }}>{v}</div>
@@ -257,7 +258,7 @@ const FamilyPage = () => {
               {[['Aditi', 62, 'var(--brand)'], ['Rohan', 44, '#FF8A3D'], ['Priya', 28, '#C94F00']].map(([n, w, c]) => (
                 <div key={n} style={{ marginBottom: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-2)', marginBottom: '4px' }}>
-                    <span>{n}</span><span style={{ color: 'var(--text-3)' }}>₹{(w * 620).toLocaleString('en-IN')}</span>
+                    <span>{n}</span><span style={{ color: 'var(--text-3)' }}>{cs()}{(w * 620).toLocaleString(nl())}</span>
                   </div>
                   <div style={{ height: 6, borderRadius: '999px', background: 'var(--border-strong)', overflow: 'hidden' }}>
                     <div style={{ width: `${w}%`, height: '100%', borderRadius: '999px', background: c }} />
@@ -299,7 +300,7 @@ const FamilyPage = () => {
             <div key={label} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '16px 18px' }}>
               <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 500 }}>{label}</div>
               <div style={{ fontSize: '22px', fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
-                ₹{Math.abs(value).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                {cs()}{Math.abs(value).toLocaleString(nl(), { maximumFractionDigits: 0 })}
               </div>
             </div>
           ))}

@@ -21,6 +21,7 @@ import {
 } from '@phosphor-icons/react';
 import AnimatedCounter from './AnimatedCounter';
 import { stagger, spring, prefersReducedMotion } from '../../lib/motion';
+import { cs, nl } from '@/lib/money';
 
 const DAYS = 45;
 const TOP_N = 4;
@@ -125,7 +126,7 @@ export default function BalanceOverview({ transactions = [], income = 0, expense
       {/* Figure + delta */}
       <div className="bo-figure">
         <span className={`bo-amount money ${positive ? '' : 'money-out'}`}>
-          <AnimatedCounter value={Math.abs(net)} prefix={positive ? '₹' : '−₹'} duration={1.1} />
+          <AnimatedCounter value={Math.abs(net)} prefix={positive ? `${cs()}` : `−${cs()}`} duration={1.1} />
         </span>
 
         {delta !== null && (
@@ -139,15 +140,15 @@ export default function BalanceOverview({ transactions = [], income = 0, expense
         {delta !== null
           ? `Spending ${deltaGood ? 'down' : 'up'} ${Math.abs(delta).toFixed(1)}% versus the same point last month.`
           : monthToDate > 0
-            ? `₹${Math.round(monthToDate).toLocaleString('en-IN')} spent so far this month.`
+            ? `${cs()}${Math.round(monthToDate).toLocaleString(nl())} spent so far this month.`
             /* nothing logged yet this month — describe the strip below instead,
                so the copy can never read "₹0 spent" next to a full Out figure */
-            : `₹${Math.round(windowSpend).toLocaleString('en-IN')} spent over the last ${DAYS} days.`}
+            : `${cs()}${Math.round(windowSpend).toLocaleString(nl())} spent over the last ${DAYS} days.`}
       </p>
 
       {/* Daily spend strip — the shape of the month */}
       <div className="bo-bars" role="img"
-        aria-label={`Daily spending for the last ${DAYS} days. Highest day ₹${Math.round(maxDay).toLocaleString('en-IN')}.`}>
+        aria-label={`Daily spending for the last ${DAYS} days. Highest day ${cs()}${Math.round(maxDay).toLocaleString(nl())}.`}>
         {bars.map((b, i) => (
           <motion.span
             key={i}
@@ -156,7 +157,7 @@ export default function BalanceOverview({ transactions = [], income = 0, expense
             animate={{ scaleY: 1 }}
             transition={stagger(i, 0.012)}
             style={{ height: `${Math.max(b.h, b.total > 0 ? 8 : 4)}%` }}
-            title={`${b.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · ₹${Math.round(b.total).toLocaleString('en-IN')}`}
+            title={`${b.date.toLocaleDateString(nl(), { day: 'numeric', month: 'short' })} · ${cs()}${Math.round(b.total).toLocaleString(nl())}`}
           />
         ))}
         <svg width="0" height="0" aria-hidden="true">
@@ -191,11 +192,11 @@ export default function BalanceOverview({ transactions = [], income = 0, expense
       <footer className="bo-foot">
         <div>
           <span className="n-label">In</span>
-          <span className="money money-in">₹{Math.round(income).toLocaleString('en-IN')}</span>
+          <span className="money money-in">{cs()}{Math.round(income).toLocaleString(nl())}</span>
         </div>
         <div>
           <span className="n-label">Out</span>
-          <span className="money money-out">₹{Math.round(expenses).toLocaleString('en-IN')}</span>
+          <span className="money money-out">{cs()}{Math.round(expenses).toLocaleString(nl())}</span>
         </div>
       </footer>
     </motion.section>

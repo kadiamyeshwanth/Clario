@@ -11,14 +11,15 @@
  */
 import { useEffect, useRef, useCallback } from 'react';
 import createGlobe from 'cobe';
+import { cs } from '@/lib/money';
 
 /* The pins carry Clario's own read, not a travel log — a small stat card per
    city, spread across longitudes so a couple always face the viewer. */
 /* spread ~60° apart in longitude so the pins never clump into one corner */
 const defaultMarkers = [
-  { id: 'pin-mumbai',  location: [19.076, 72.8777],   k: 'Balance',     v: '₹2,31,450', rotate: -5 },
+  { id: 'pin-mumbai',  location: [19.076, 72.8777],   k: 'Balance',     v: `${cs()}2,31,450`, rotate: -5 },
   { id: 'pin-sing',    location: [1.3521, 103.8198],  k: 'Saved',       v: '47%',       rotate: 4 },
-  { id: 'pin-tokyo',   location: [35.6762, 139.6503], k: 'Net · Sept',  v: '+₹1,13,460',rotate: -3 },
+  { id: 'pin-tokyo',   location: [35.6762, 139.6503], k: 'Net · Sept',  v: `+${cs()}1,13,460`,rotate: -3 },
   { id: 'pin-london',  location: [51.51, -0.13],      k: 'Budgets',     v: '3 of 4',    rotate: 6 },
   { id: 'pin-ny',      location: [40.7128, -74.006],  k: 'Bank logins', v: '0',         rotate: -4 },
   { id: 'pin-sp',      location: [-23.5505, -46.6333],k: 'Streak',      v: '12 days',   rotate: 3 },

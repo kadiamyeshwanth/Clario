@@ -1,212 +1,207 @@
-const router   = require('express').Router();
-const jwt       = require('jsonwebtoken');
-const User      = require('../models/User');
-const passport  = require('../config/passport');
-const { validate } = require('../middleware/validate');
-const { registerSchema, loginSchema } = require('../schemas/validation');
-
-// Helper: sign a JWT for a given user
-const signToken = (user) =>
-  jwt.sign(
-    { id: user._id, username: user.username, email: user.email },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-  );
-
-// ── POST /api/auth/register ────────────────────────────────────────────────
-router.post('/register', validate(registerSchema), async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
-
-    // Basic input validation
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Username, email and password are required.' });
-    }
-
-    // Check if username or email already taken
-    const existing = await User.findOne({ $or: [{ username }, { email }] });
-    if (existing) {
-      const field = existing.username === username ? 'Username' : 'Email';
-      return res.status(409).json({ error: `${field} is already taken.` });
-    }
-
-    // Create and save the user (password is hashed by pre-save hook)
-    const user = new User({ username, email, password });
-    await user.save();
-
-    const token = signToken(user);
-
-    res.status(201).json({
-      message: 'Account created successfully!',
-      token,
-      user: { id: user._id, username: user.username, email: user.email },
-    });
-  } catch (err) {
-    // Handle Mongoose validation errors nicely
-    if (err.name === 'ValidationError') {
-      const messages = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({ error: messages[0] });
-    }
-    console.error('Register error:', err);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-// ── POST /api/auth/login ───────────────────────────────────────────────────
-router.post('/login', validate(loginSchema), async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required.' });
-    }
-
-    // Find user (search by username OR email for convenience)
-    const user = await User.findOne({
-      $or: [{ username }, { email: username }],
-    });
-
-    if (!user) {
-      // Intentionally vague — don't reveal whether username exists
-      return res.status(401).json({ error: 'Invalid credentials.' });
-    }
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials.' });
-    }
-
-    const token = signToken(user);
-
-    res.json({
-      message: 'Logged in successfully!',
-      token,
-      user: { id: user._id, username: user.username, email: user.email },
-    });
-  } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
-// ── GET /api/auth/me ───────────────────────────────────────────────────────
-// Returns the currently authenticated user's profile (used to verify token on load)
-const protect = require('../middleware/protect');
-router.get('/me', protect, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: 'User not found.' });
-    res.json({ user: { id: user._id, username: user.username, email: user.email } });
-  } catch (err) {
-    res.status(500).json({ error: 'Something went wrong.' });
-  }
-});
-
-// ── POST /api/auth/forgot-password ────────────────────────────────────────
-// Generates a reset token, stores its SHA-256 hash, sends/logs the link
+/**
+ * routes/auth.js — sign-up, sign-in, sessions, password reset, Google OAuth.
+ *
+ *   POST /register            create account → { user, accessToken, refreshToken }
+ *   POST /login               username-or-email + password → same
+ *   POST /refresh             rotate refresh token → new pair
+ *   POST /logout              revoke this device's session
+ *   POST /logout-all          revoke every session (JWT)
+ *   GET  /sessions            list signed-in devices (JWT)
+ *   DELETE /sessions/:id      sign one device out (JWT)
+ *   GET  /me                  current user (JWT)
+ *   POST /forgot-password     email a reset link (always same response)
+ *   POST /reset-password      set a new password with the emailed token
+ *   GET  /google[?platform=]  start Google OAuth
+ *   GET  /google/callback     → redirect with a one-time code
+ *   POST /oauth/exchange      one-time code → tokens
+ */
+const router = require('express').Router();
 const crypto = require('crypto');
+const env = require('../config/env');
+const User = require('../models/User');
+const Session = require('../models/Session');
+const OAuthCode = require('../models/OAuthCode');
+const passport = require('../config/passport');
+const protect = require('../middleware/protect');
+const { validate } = require('../middleware/validate');
+const { registerSchema, loginSchema, resetPasswordSchema } = require('../schemas/validation');
+const { issueSession, rotateSession, revokeByToken, revokeAll, sha256 } = require('../services/sessions');
 const { sendResetEmail, isMailerConfigured } = require('../utils/mailer');
+const { isSupported } = require('../utils/currencies');
+const { HttpError, escapeRegex } = require('../lib/http');
+const logger = require('../lib/logger');
 
+const LANGS = ['en', 'hi', 'es', 'fr', 'de', 'pt'];
+const validTz = (tz) => { try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; } };
+
+const authResponse = async (user, req, message) => ({
+  message,
+  user: user.toPublic(),
+  ...(await issueSession(user, req)),
+});
+
+// ── Register ────────────────────────────────────────────────────────────────
+router.post('/register', validate(registerSchema), async (req, res) => {
+  const { username, email, password, currency, timezone, language, locale } = req.body;
+  const emailLc = email.toLowerCase().trim();
+
+  const existing = await User.findOne({
+    $or: [{ username: new RegExp(`^${escapeRegex(username)}$`, 'i') }, { email: emailLc }],
+  }).lean();
+  if (existing) {
+    const field = existing.email === emailLc ? 'Email' : 'Username';
+    throw new HttpError(409, `${field} is already taken.`);
+  }
+
+  const preferences = {};
+  if (currency && isSupported(currency)) preferences.currency = currency.toUpperCase();
+  if (timezone && validTz(timezone)) preferences.timezone = timezone;
+  if (language && LANGS.includes(language)) preferences.language = language;
+  if (locale && /^[a-z]{2,3}(-[A-Z]{2})?$/.test(locale)) preferences.locale = locale;
+
+  const user = await User.create({ username, email: emailLc, password, preferences });
+  res.status(201).json(await authResponse(user, req, 'Account created successfully!'));
+});
+
+// ── Login ───────────────────────────────────────────────────────────────────
+router.post('/login', validate(loginSchema), async (req, res) => {
+  const { username, password } = req.body;
+  const id = username.trim();
+  const user = await User.findOne({ $or: [{ username: id }, { email: id.toLowerCase() }] });
+
+  // Same message for unknown user and wrong password: no account enumeration.
+  if (!user) throw new HttpError(401, 'Invalid credentials.');
+  if (user.isLocked()) {
+    const mins = Math.ceil((user.lockUntil - Date.now()) / 60000);
+    throw new HttpError(429, `Too many failed attempts. Try again in ${mins} minute${mins === 1 ? '' : 's'}, or reset your password.`);
+  }
+  if (!user.password) throw new HttpError(401, 'This account uses Google sign-in. Continue with Google, or set a password via “Forgot password”.');
+
+  const ok = await user.comparePassword(password);
+  if (!ok) {
+    await user.registerFailedLogin();
+    throw new HttpError(401, 'Invalid credentials.');
+  }
+  await user.clearFailedLogins();
+  res.json(await authResponse(user, req, 'Logged in successfully!'));
+});
+
+// ── Sessions ────────────────────────────────────────────────────────────────
+router.post('/refresh', async (req, res) => {
+  const result = await rotateSession(req.body?.refreshToken, req, (id) => User.findById(id));
+  res.json({ token: result.token, accessToken: result.accessToken, refreshToken: result.refreshToken, sessionId: result.sessionId, user: result.user.toPublic() });
+});
+
+router.post('/logout', async (req, res) => {
+  await revokeByToken(req.body?.refreshToken);
+  res.json({ message: 'Signed out.' });
+});
+
+router.post('/logout-all', protect, async (req, res) => {
+  const { modifiedCount } = await revokeAll(req.user.id);
+  res.json({ message: 'Signed out everywhere.', revoked: modifiedCount });
+});
+
+router.get('/sessions', protect, async (req, res) => {
+  const current = req.get('x-session-id') || '';
+  const sessions = await Session.find({ userId: req.user.id, revokedAt: null, expiresAt: { $gt: new Date() } })
+    .sort({ lastUsedAt: -1 }).lean();
+  res.json(sessions.map((s) => ({
+    id: s._id, device: s.device, platform: s.platform, lastUsedAt: s.lastUsedAt, createdAt: s.createdAt,
+    current: !!current && String(s._id) === current,
+  })));
+});
+
+router.delete('/sessions/:id', protect, async (req, res) => {
+  const r = await Session.updateOne({ _id: req.params.id, userId: req.user.id, revokedAt: null }, { revokedAt: new Date() });
+  if (!r.matchedCount) throw new HttpError(404, 'Session not found.');
+  res.json({ message: 'Device signed out.' });
+});
+
+// ── Me ──────────────────────────────────────────────────────────────────────
+router.get('/me', protect, async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) throw new HttpError(404, 'User not found.');
+  res.json({ user: user.toPublic() });
+});
+
+// ── Password reset ──────────────────────────────────────────────────────────
 router.post('/forgot-password', async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required.' });
+  const email = String(req.body?.email || '').toLowerCase().trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)) throw new HttpError(400, 'Enter a valid email address.');
+  const SAFE_MSG = 'If that email is registered, a reset link has been sent.';
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+  const user = await User.findOne({ email });
+  if (!user) return res.json({ message: SAFE_MSG });
 
-    // Always respond the same way to prevent email enumeration
-    const SAFE_MSG = 'If that email is registered, a reset link has been sent.';
-
-    if (!user) return res.json({ message: SAFE_MSG });
-
-    // Generate a random token, store its hash (never the raw token)
-    const rawToken  = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-
-    user.resetToken       = tokenHash;
-    user.resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-    await user.save({ validateBeforeSave: false });
-
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const resetUrl    = `${frontendUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
-
-    // In production with no SMTP configured, fail loudly rather than telling
-    // the user a link is on its way that will never arrive.
-    if (!isMailerConfigured() && process.env.NODE_ENV === 'production') {
-      console.error('[forgot-password] SMTP not configured — cannot send reset email.');
-      return res.status(503).json({
-        error: 'Password reset is temporarily unavailable. Please contact support.',
-      });
-    }
-
-    await sendResetEmail(user.email, resetUrl);
-
-    res.json({ message: SAFE_MSG });
-  } catch (err) {
-    console.error('Forgot-password error:', err);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  if (!isMailerConfigured() && env.isProd) {
+    logger.error('forgot-password: mailer not configured');
+    throw new HttpError(503, 'Password reset is temporarily unavailable. Please contact support.');
   }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  user.resetToken = sha256(rawToken);
+  user.resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+  await user.save({ validateBeforeSave: false });
+
+  const resetUrl = `${env.FRONTEND_URL}/reset-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
+  await sendResetEmail(user.email, resetUrl);
+  res.json({ message: SAFE_MSG });
 });
 
-// ── POST /api/auth/reset-password ─────────────────────────────────────────
-// Validates token + expiry, updates password, clears token
-router.post('/reset-password', async (req, res) => {
-  try {
-    const { token, email, password } = req.body;
-    if (!token || !email || !password)
-      return res.status(400).json({ error: 'Token, email, and new password are required.' });
-    if (password.length < 6)
-      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+router.post('/reset-password', validate(resetPasswordSchema), async (req, res) => {
+  const { token, email, password } = req.body;
+  const user = await User.findOne({
+    email: email.toLowerCase().trim(),
+    resetToken: sha256(token),
+    resetTokenExpiry: { $gt: new Date() },
+  });
+  if (!user) throw new HttpError(400, 'Invalid or expired reset link. Please request a new one.');
 
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-
-    const user = await User.findOne({
-      email:            email.toLowerCase().trim(),
-      resetToken:       tokenHash,
-      resetTokenExpiry: { $gt: new Date() }, // must not be expired
-    });
-
-    if (!user)
-      return res.status(400).json({ error: 'Invalid or expired reset link. Please request a new one.' });
-
-    user.password         = password; // pre-save hook will hash it
-    user.resetToken       = undefined;
-    user.resetTokenExpiry = undefined;
-    await user.save();
-
-    res.json({ message: 'Password updated successfully. You can now log in.' });
-  } catch (err) {
-    console.error('Reset-password error:', err);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
+  user.password = password;
+  user.resetToken = undefined;
+  user.resetTokenExpiry = undefined;
+  user.failedLogins = 0;
+  user.lockUntil = null;
+  await user.save();
+  // A reset means the old password may be compromised: sign out every device.
+  await revokeAll(user._id);
+  res.json({ message: 'Password updated successfully. You can now log in.' });
 });
 
-// ── Google OAuth ──────────────────────────────────────────────────────────
-// These routes exist whether or not Google is configured, so an unconfigured
-// deploy sends the user back to the login screen with a reason instead of
-// throwing an unhandled error from Passport.
-const googleUnavailable = (req, res) =>
-  res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_unavailable`);
+// ── Google OAuth ────────────────────────────────────────────────────────────
+const loginRedirect = (platform, query) =>
+  platform === 'mobile' ? `${env.MOBILE_SCHEME}://auth/callback?${query}` : `${env.FRONTEND_URL}/login?${query}`;
 
-// Step 1 — Redirect to Google consent screen
 router.get('/google', (req, res, next) => {
-  if (!passport.isGoogleEnabled) return googleUnavailable(req, res);
-  return passport.authenticate('google', { scope: ['profile', 'email'], session: false })(req, res, next);
+  const platform = req.query.platform === 'mobile' ? 'mobile' : 'web';
+  if (!passport.isGoogleEnabled) return res.redirect(loginRedirect(platform, 'error=oauth_unavailable'));
+  return passport.authenticate('google', { scope: ['profile', 'email'], session: false, state: platform })(req, res, next);
 });
 
-// Step 2 — Google redirects back here with code
 router.get('/google/callback',
   (req, res, next) => {
-    if (!passport.isGoogleEnabled) return googleUnavailable(req, res);
-    return passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth` })(req, res, next);
+    const platform = req.query.state === 'mobile' ? 'mobile' : 'web';
+    if (!passport.isGoogleEnabled) return res.redirect(loginRedirect(platform, 'error=oauth_unavailable'));
+    return passport.authenticate('google', { session: false, failureRedirect: loginRedirect(platform, 'error=oauth') })(req, res, next);
   },
-  (req, res) => {
-    // req.user is populated by Passport on success
-    const token       = signToken(req.user);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+  async (req, res) => {
+    const platform = req.query.state === 'mobile' ? 'mobile' : 'web';
+    const code = crypto.randomBytes(32).toString('base64url');
+    await OAuthCode.create({ codeHash: sha256(code), userId: req.user._id, platform, expiresAt: new Date(Date.now() + 60_000) });
+    const target = platform === 'mobile' ? `${env.MOBILE_SCHEME}://auth/callback` : `${env.FRONTEND_URL}/auth/callback`;
+    res.redirect(`${target}?code=${code}`);
   }
 );
 
-module.exports = router;
+router.post('/oauth/exchange', async (req, res) => {
+  const code = String(req.body?.code || '');
+  if (!code) throw new HttpError(400, 'Code is required.');
+  const entry = await OAuthCode.findOneAndDelete({ codeHash: sha256(code), expiresAt: { $gt: new Date() } });
+  if (!entry) throw new HttpError(400, 'This sign-in link has expired. Please try again.');
+  const user = await User.findById(entry.userId);
+  if (!user) throw new HttpError(400, 'Account not found.');
+  res.json(await authResponse(user, req, 'Signed in with Google.'));
+});
 
+module.exports = router;

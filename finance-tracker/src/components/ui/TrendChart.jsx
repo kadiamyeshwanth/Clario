@@ -9,6 +9,7 @@
 import { useMemo, useId } from 'react';
 import { motion } from 'framer-motion';
 import { prefersReducedMotion } from '../../lib/motion';
+import { cs, nl } from '@/lib/money';
 
 const W = 560;
 const H = 150;
@@ -42,7 +43,7 @@ export default function TrendChart({ transactions = [] }) {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       ms.push({
-        label: d.toLocaleDateString('en-IN', { month: 'short' }),
+        label: d.toLocaleDateString(nl(), { month: 'short' }),
         year: d.getFullYear(), month: d.getMonth(),
         income: 0, expenses: 0,
       });
@@ -88,7 +89,7 @@ export default function TrendChart({ transactions = [] }) {
       </figcaption>
 
       <svg className="tc-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
-        role="img" aria-label={`Income and spending over six months. Peak ₹${Math.round(peak).toLocaleString('en-IN')}.`}>
+        role="img" aria-label={`Income and spending over six months. Peak ${cs()}${Math.round(peak).toLocaleString(nl())}.`}>
         <defs>
           {/* Income — brand blue, fading to nothing at the baseline */}
           <linearGradient id={`in-${uid}`} x1="0" y1="0" x2="0" y2="1">

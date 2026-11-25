@@ -16,12 +16,14 @@ import { LogoMark, LogoWordmark } from '../ui/Logo';
 import { SidebarSimple, CaretRight } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchBudgets } from '../../api/budgets';
-import { fetchTransactions } from '../../api/transactions';
+import { t } from '../../lib/i18n';
 import { NAV_GROUPS, NAV_FOOTER } from './navGroups';
 
 const OPEN_KEY = 'clario.nav.openGroups';
 
-const Row = ({ to, icon: Icon, label, badge = 0, onNavigate, collapsed }) => (
+const Row = ({ to, icon: Icon, label: rawLabel, badge = 0, onNavigate, collapsed }) => {
+  const label = t(rawLabel);
+  return (
   <NavLink to={to} onClick={onNavigate} className="rail-item" data-tip={collapsed ? label : undefined}>
     {({ isActive }) => (
       <span className={`rail-btn${isActive ? ' is-active' : ''}`}>
@@ -31,16 +33,13 @@ const Row = ({ to, icon: Icon, label, badge = 0, onNavigate, collapsed }) => (
       </span>
     )}
   </NavLink>
-);
+  );
+};
 
 export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }) {
   const { data: budgets = [] } = useQuery({ queryKey: ['budgets'], queryFn: fetchBudgets, staleTime: 60_000 });
-  const { data: allTxns = [] } = useQuery({ queryKey: ['transactions'], queryFn: fetchTransactions, staleTime: 60_000 });
-
-  const spendMap = allTxns
-    .filter(t => !t.isRecurring && t.type === 'expense')
-    .reduce((acc, t) => { acc[t.category] = (acc[t.category] || 0) + t.amount; return acc; }, {});
-  const badges = { '/budgets': budgets.filter(b => (spendMap[b.category] || 0) >= b.limit).length };
+  // The server scores each budget against THIS month's spending (state: ok | warning | over).
+  const badges = { '/budgets': budgets.filter(b => b.state === 'over').length };
 
   const go = () => onClose?.();
 
@@ -93,7 +92,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onClose }
                 aria-controls={`rail-group-${group.key}`}
                 disabled={hasActive}
               >
-                <span>{group.label}</span>
+                <span>{t(group.label)}</span>
                 {!isOpen && groupBadge > 0 && <span className="rail-group-dot" aria-label={`${groupBadge} alerts`} />}
                 <CaretRight size={10} weight="bold" className="rail-group-caret" />
               </button>

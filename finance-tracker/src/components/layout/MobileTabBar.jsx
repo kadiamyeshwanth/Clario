@@ -11,6 +11,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SquaresFour, CreditCard, Folder, Target, List, X } from '@phosphor-icons/react';
 import { NAV_GROUPS, NAV_FOOTER } from './navGroups';
+import { t } from '../../lib/i18n';
 
 const TABS = [
   { to: '/dashboard',    icon: SquaresFour, label: 'Home' },
@@ -74,7 +75,7 @@ export default function MobileTabBar() {
               <span className="nav-sheet-grabber" aria-hidden="true" />
               {NAV_GROUPS.map(group => (
                 <section key={group.key} className="nav-sheet-group">
-                  <h2 className="nav-sheet-label">{group.label || 'Main'}</h2>
+                  <h2 className="nav-sheet-label">{t(group.label || 'Main')}</h2>
                   <div className="nav-sheet-grid">
                     {group.items.map(({ to, icon: Icon, label }) => (
                       <NavLink key={to} to={to} className={({ isActive }) => `nav-sheet-item${isActive ? ' is-active' : ''}`}>

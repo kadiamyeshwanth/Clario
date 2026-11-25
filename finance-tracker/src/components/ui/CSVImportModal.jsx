@@ -22,6 +22,7 @@ import {
 import Papa from 'papaparse';
 import toast from 'react-hot-toast';
 import client from '../../api/client';
+import { cs, nl } from '@/lib/money';
 
 const STEPS = ['upload', 'map', 'preview', 'done'];
 
@@ -95,12 +96,12 @@ const CSVImportModal = ({ onClose, onImported }) => {
       let amount = 0;
       let type = defaultType;
       if (mapping.debitCol && mapping.creditCol) {
-        const debit  = parseFloat(String(row[mapping.debitCol] || '').replace(/[₹,\s]/g, '')) || 0;
-        const credit = parseFloat(String(row[mapping.creditCol] || '').replace(/[₹,\s]/g, '')) || 0;
+        const debit  = parseFloat(String(row[mapping.debitCol] || '').replace(/[^\d.-]/g, '')) || 0;
+        const credit = parseFloat(String(row[mapping.creditCol] || '').replace(/[^\d.-]/g, '')) || 0;
         if (credit > 0) { amount = credit; type = 'income'; }
         else if (debit > 0) { amount = debit; type = 'expense'; }
       } else if (mapping.amount) {
-        amount = parseFloat(String(row[mapping.amount] || '').replace(/[₹,\s]/g, '')) || 0;
+        amount = parseFloat(String(row[mapping.amount] || '').replace(/[^\d.-]/g, '')) || 0;
         if (mapping.type && row[mapping.type]) {
           const t = String(row[mapping.type]).toLowerCase();
           type = (t.includes('cr') || t.includes('credit') || t.includes('income')) ? 'income' : 'expense';
@@ -137,12 +138,12 @@ const CSVImportModal = ({ onClose, onImported }) => {
       let amount = 0;
       let type = defaultType;
       if (mapping.debitCol && mapping.creditCol) {
-        const debit  = parseFloat(String(row[mapping.debitCol] || '').replace(/[₹,\s]/g, '')) || 0;
-        const credit = parseFloat(String(row[mapping.creditCol] || '').replace(/[₹,\s]/g, '')) || 0;
+        const debit  = parseFloat(String(row[mapping.debitCol] || '').replace(/[^\d.-]/g, '')) || 0;
+        const credit = parseFloat(String(row[mapping.creditCol] || '').replace(/[^\d.-]/g, '')) || 0;
         if (credit > 0) { amount = credit; type = 'income'; }
         else if (debit > 0) { amount = debit; type = 'expense'; }
       } else if (mapping.amount) {
-        amount = parseFloat(String(row[mapping.amount] || '').replace(/[₹,\s]/g, '')) || 0;
+        amount = parseFloat(String(row[mapping.amount] || '').replace(/[^\d.-]/g, '')) || 0;
         if (mapping.type && row[mapping.type]) {
           const t = String(row[mapping.type]).toLowerCase();
           type = (t.includes('cr') || t.includes('credit') || t.includes('income')) ? 'income' : 'expense';
@@ -386,7 +387,7 @@ const CSVImportModal = ({ onClose, onImported }) => {
                         <td style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px' }}>{r.description || '—'}</td>
                         <td><span className={`n-tag n-tag-${r.type === 'income' ? 'green' : 'red'}`}>{r.type}</span></td>
                         <td style={{ fontWeight: 600, color: r.type === 'income' ? 'var(--brand)' : 'var(--text)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                          ₹{r.amount.toLocaleString('en-IN')}
+                          {cs()}{r.amount.toLocaleString(nl())}
                         </td>
                       </tr>
                     ))}

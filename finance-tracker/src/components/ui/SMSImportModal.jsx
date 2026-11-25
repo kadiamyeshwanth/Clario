@@ -37,6 +37,7 @@ import {
 import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../constants/categories';
+import { cs, nl } from '@/lib/money';
 
 // ── AI Categorizer (mirrors backend logic, runs on frontend for preview) ────────
 const KEYWORD_MAP = {
@@ -397,7 +398,7 @@ const SMSImportModal = ({ onClose, onImported }) => {
                           color: row.type === 'income' ? 'var(--green)' : 'var(--text)',
                           fontVariantNumeric: 'tabular-nums',
                         }}>
-                          {row.type === 'income' ? '+' : '-'}₹{row.amount.toLocaleString('en-IN')}
+                          {row.type === 'income' ? '+' : '-'}{cs()}{row.amount.toLocaleString(nl())}
                         </span>
                         {/* Type toggle */}
                         <div style={{ display: 'flex', border: '1px solid var(--border-strong)', borderRadius: 'var(--r)', overflow: 'hidden' }}>

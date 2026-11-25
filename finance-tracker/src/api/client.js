@@ -1,32 +1,88 @@
 import axios from 'axios';
 
+/**
+ * API client.
+ *
+ * Access tokens live 15 minutes. When one expires, the first request that hits
+ * the 401 transparently exchanges the refresh token for a new pair and retries;
+ * concurrent requests wait on that single refresh instead of each starting one.
+ * Only when the refresh itself fails is the user sent back to the login page.
+ */
+const KEYS = { access: 'finance_token', refresh: 'finance_refresh', session: 'finance_session', user: 'finance_user' };
+
+export const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
+  baseURL,
+  headers: { 'Content-Type': 'application/json', 'X-Client-Platform': 'web' },
+  timeout: 30000,
 });
 
-// ── Request interceptor: attach JWT to every request ─────────────────────
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('finance_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-}, (error) => Promise.reject(error));
+export const tokenStore = {
+  get access() { return localStorage.getItem(KEYS.access); },
+  get refresh() { return localStorage.getItem(KEYS.refresh); },
+  get session() { return localStorage.getItem(KEYS.session); },
+  save({ accessToken, token, refreshToken, sessionId }) {
+    const a = accessToken || token;
+    if (a) localStorage.setItem(KEYS.access, a);
+    if (refreshToken) localStorage.setItem(KEYS.refresh, refreshToken);
+    if (sessionId) localStorage.setItem(KEYS.session, sessionId);
+  },
+  clear() { Object.values(KEYS).forEach((k) => localStorage.removeItem(k)); },
+};
 
-// ── Response interceptor: auto-logout on 401 (expired / invalid token) ───
+apiClient.interceptors.request.use((config) => {
+  const token = tokenStore.access;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const sid = tokenStore.session;
+  if (sid) config.headers['X-Session-Id'] = sid;
+  return config;
+});
+
+let refreshing = null;
+const refreshTokens = () => {
+  if (!refreshing) {
+    const refreshToken = tokenStore.refresh;
+    refreshing = (refreshToken
+      ? axios.post(`${baseURL}/auth/refresh`, { refreshToken }, { headers: { 'X-Client-Platform': 'web' } })
+      : Promise.reject(new Error('no refresh token')))
+      .then(({ data }) => {
+        tokenStore.save(data);
+        if (data.user) localStorage.setItem(KEYS.user, JSON.stringify(data.user));
+        return data.accessToken;
+      })
+      .finally(() => { refreshing = null; });
+  }
+  return refreshing;
+};
+
+const sendToLogin = () => {
+  tokenStore.clear();
+  if (!window.location.pathname.startsWith('/login')) window.location.href = '/login';
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid — clear storage and reload to login
-      localStorage.removeItem('finance_token');
-      localStorage.removeItem('finance_user');
-      // Only redirect if we're not already on the login page
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+  async (error) => {
+    const original = error.config || {};
+    const status = error.response?.status;
+    const isAuthCall = /\/auth\/(login|register|refresh|forgot-password|reset-password|oauth)/.test(original.url || '');
+
+    if (status === 401 && !isAuthCall && !original._retried) {
+      original._retried = true;
+      try {
+        const token = await refreshTokens();
+        original.headers = { ...original.headers, Authorization: `Bearer ${token}` };
+        return apiClient(original);
+      } catch {
+        sendToLogin();
       }
+    }
+    // Friendlier message when the server is unreachable (offline, cold start).
+    if (!error.response) {
+      error.message = navigator.onLine === false
+        ? 'You are offline. Check your connection and try again.'
+        : 'Could not reach Clario. Please try again in a moment.';
     }
     return Promise.reject(error);
   }

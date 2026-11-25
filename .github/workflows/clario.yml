@@ -1,0 +1,41 @@
+name: Clario CI
+
+on:
+  push:
+    paths: ['finance-tracker/**', 'finance-tracker-backend/**', 'mobile/**', '.github/workflows/clario.yml']
+  pull_request:
+    paths: ['finance-tracker/**', 'finance-tracker-backend/**', 'mobile/**', '.github/workflows/clario.yml']
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: finance-tracker-backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: finance-tracker-backend/package-lock.json }
+      - run: npm ci
+      # mongodb-memory-server downloads a MongoDB binary on first run.
+      - run: npm test
+
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: finance-tracker } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: finance-tracker/package-lock.json }
+      - run: npm ci
+      - run: node scripts/codemod-currency.cjs --check
+      - run: npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - run: npm ci
+      - run: npx expo-doctor
+      - run: npx expo export --platform android --platform ios --platform web --output-dir .expo-check

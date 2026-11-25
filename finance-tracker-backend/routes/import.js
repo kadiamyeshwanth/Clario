@@ -16,6 +16,11 @@ const auth    = require('../middleware/protect');
 const Transaction  = require('../models/Transaction');
 const { suggestCategory } = require('../utils/categorizer');
 const { detectFlags } = require('../utils/fraudDetector');
+const mongoose = require('mongoose');
+const Wallet = require('../models/Wallet');
+const { baseCurrencyOf } = require('../services/ledger');
+const { rate } = require('../services/fx');
+const { isSupported } = require('../utils/currencies');
 
 // ── Date parser — handles multiple bank formats ───────────────────────────────
 const parseDate = (str) => {
@@ -62,13 +67,29 @@ router.post('/csv', auth, async (req, res) => {
     // Hard limit: max 1000 rows per import
     const rows = transactions.slice(0, 1000);
 
-    // Fetch existing transactions for this user to detect duplicates
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Duplicate detection must cover the statement's own date range — the old
+    // code only looked back 30 days, so re-importing an older statement
+    // duplicated every row.
+    const parsedDates = rows.map((r) => parseDate(r?.date)).filter(Boolean);
+    const minDate = parsedDates.length ? new Date(Math.min(...parsedDates) - 864e5) : new Date();
+    const maxDate = parsedDates.length ? new Date(Math.max(...parsedDates) + 864e5) : new Date();
+
+    // Statement currency (e.g. a USD card statement for an INR user) and the
+    // account the statement belongs to, both optional.
+    const base = await baseCurrencyOf(req.user.id);
+    const stmtCurrency = isSupported(req.body.currency) ? String(req.body.currency).toUpperCase() : base;
+    const fx = stmtCurrency === base ? { rate: 1 } : await rate(stmtCurrency, base);
+    let wallet = null;
+    if (req.body.walletId) {
+      if (!mongoose.isValidObjectId(req.body.walletId)) return res.status(400).json({ error: 'Invalid wallet.' });
+      wallet = await Wallet.findOne({ _id: req.body.walletId, userId: req.user.id }).lean();
+      if (!wallet) return res.status(404).json({ error: 'Wallet not found.' });
+    }
 
     const existingTxns = await Transaction.find({
       userId: req.user.id,
-      date:   { $gte: thirtyDaysAgo },
+      isRecurring: false,
+      date:   { $gte: minDate, $lte: maxDate },
     }).select('date amount type').lean();
 
     // Build a quick lookup set: "YYYY-MM-DD|amount|type"
@@ -104,8 +125,9 @@ router.post('/csv', auth, async (req, res) => {
         }
 
         // Parse amount
-        const amount = parseFloat(String(row.amount || '').replace(/[₹,\s]/g, ''));
-        if (!amount || amount <= 0 || !isFinite(amount)) {
+        const rawAmount = parseFloat(String(row.amount || '').replace(/[^\d.-]/g, ''));
+        const amount = Math.round(Math.abs(rawAmount) * fx.rate * 100) / 100;
+        if (!amount || amount <= 0 || !isFinite(amount) || amount > 1e10) {
           errors.push({ row: lineNo(i), reason: `Invalid amount "${String(row.amount ?? '').slice(0, 30)}"`, description: label(row) });
           continue;
         }
@@ -144,6 +166,8 @@ router.post('/csv', auth, async (req, res) => {
             : [],
           isRecurring: false,
           source:      'csv_import',
+          ...(stmtCurrency !== base && { originalAmount: Math.abs(rawAmount), originalCurrency: stmtCurrency, fxRate: fx.rate }),
+          ...(wallet && { walletId: wallet._id, walletAmount: (type === 'income' ? 1 : -1) * (wallet.currency === stmtCurrency ? Math.abs(rawAmount) : amount) }),
           _row:        lineNo(i),   // stripped before insert; used to map failures back to rows
         });
 
@@ -160,6 +184,10 @@ router.post('/csv', auth, async (req, res) => {
       try {
         const result = await Transaction.insertMany(docs, { ordered: false });
         inserted = result.length;
+        if (wallet) {
+          const delta = result.reduce((sum, t) => sum + (t.walletAmount || 0), 0);
+          if (delta) await Wallet.updateOne({ _id: wallet._id }, { $inc: { balance: Math.round(delta * 100) / 100 } });
+        }
       } catch (bulkErr) {
         // ordered:false — Mongo/Mongoose inserts what it can and reports the rest.
         inserted = bulkErr.insertedDocs?.length ?? bulkErr.result?.nInserted ?? 0;

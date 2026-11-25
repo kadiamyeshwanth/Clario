@@ -20,6 +20,7 @@ import { useTheme } from '../../context/ThemeContext';
 import {
   SkeuoDefs, RaisedBar, SkeuoTooltipSlot, useChartTokens,
 } from '../charts/SkeuoChart';
+import { cs, nl, short } from '@/lib/money';
 
 const RANGES = [
   { key: 'D', label: '14D', days: 14 },
@@ -29,14 +30,8 @@ const RANGES = [
 ];
 
 const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
-const inr = (n) => `₹${Math.round(Math.abs(n)).toLocaleString('en-IN')}`;
-const inrShort = (n) => {
-  const v = Math.abs(n);
-  if (v >= 1e7) return `₹${(v / 1e7).toFixed(1)}Cr`;
-  if (v >= 1e5) return `₹${(v / 1e5).toFixed(1)}L`;
-  if (v >= 1e3) return `₹${Math.round(v / 1e3)}k`;
-  return `₹${Math.round(v)}`;
-};
+const inr = (n) => `${cs()}${Math.round(Math.abs(n)).toLocaleString(nl())}`;
+const inrShort = (n) => short(n);
 
 export default function CashFlow({ transactions = [] }) {
   const [range, setRange] = useState('W');
@@ -67,8 +62,8 @@ export default function CashFlow({ transactions = [] }) {
     return {
       data: buckets.map((b, i) => ({
         i,
-        label: b.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-        full:  b.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+        label: b.date.toLocaleDateString(nl(), { day: 'numeric', month: 'short' }),
+        full:  b.date.toLocaleDateString(nl(), { day: 'numeric', month: 'short', year: 'numeric' }),
         in: b.in,
         out: -b.out,          // negative so it stacks downward
         outAbs: b.out,

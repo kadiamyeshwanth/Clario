@@ -11,7 +11,7 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 // Import the configured Express app (does NOT start listening — just the app)
-const app = require('../server');
+const app = require('../app');
 
 // ─── Cached MongoDB Connection ────────────────────────────────────────────────
 // `global.mongooseCache` persists across warm Lambda invocations on Vercel,

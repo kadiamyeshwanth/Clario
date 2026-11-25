@@ -5,6 +5,7 @@
 const router   = require('express').Router();
 const Category = require('../models/Category');
 const protect  = require('../middleware/protect');
+const { pick } = require('../lib/http');
 
 router.use(protect);
 
@@ -76,7 +77,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const cat = await Category.findOneAndUpdate(
       { _id: req.params.id, userId: req.user.id },
-      { $set: req.body },
+      { $set: pick(req.body, ["name","icon","color","type"]) },
       { new: true, runValidators: true }
     );
     if (!cat) return res.status(404).json({ error: 'Category not found.' });

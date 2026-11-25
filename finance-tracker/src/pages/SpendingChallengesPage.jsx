@@ -4,7 +4,9 @@
  * "coffee detox", etc. Progress is tracked in real-time against transactions.
  */
 import React, { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchChallenges, joinChallenge, abandonChallenge, removeChallenge } from '../api/challenges';
+import { t } from '../lib/i18n';
 import { motion } from 'framer-motion';
 import {
   Trophy,
@@ -23,8 +25,12 @@ import { fetchTransactions } from '../api/transactions';
 import { fetchBudgets }      from '../api/budgets';
 import PageHeader from '../components/ui/PageHeader';
 import toast from 'react-hot-toast';
+import { cs, nl } from '@/lib/money';
 
-// ── Challenge definitions (all local — no backend needed) ─────────────────────
+// ── Challenge definitions ─────────────────────────────────────────────────────
+// Each card shows this month's progress computed from your transactions. Cards
+// with a `server` spec can be joined as a commitment: the server tracks it over
+// its own window, sends a result notification and keeps the history.
 const buildChallenges = (txns, budgets) => {
   const now        = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -55,6 +61,25 @@ const buildChallenges = (txns, budgets) => {
   const dailyAvg = daysPassed > 0 ? totalMonthExpense / daysPassed : 0;
   const projectedMonthTotal = dailyAvg * daysInMonth;
 
+  // Caps are personal: 80% of what you usually spend in a month on that
+  // category (last 3 full months), so they mean the same thing in any currency
+  // and at any income. The original fixed amounts are only a first-month fallback.
+  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+  const history = txns.filter(t => !t.isRecurring && t.type === 'expense' && new Date(t.date) >= threeMonthsAgo && new Date(t.date) < monthStart);
+  const monthlyAvg = (cats) => history.filter(t => cats.includes(t.category)).reduce((s, t) => s + t.amount, 0) / 3;
+  const niceCap = (avg, fallback) => {
+    if (!(avg > 0)) return fallback;
+    const v = avg * 0.8;
+    const step = Math.pow(10, Math.max(1, Math.floor(Math.log10(v)) - 1));
+    return Math.max(step, Math.round(v / step) * step);
+  };
+  const foodCap = niceCap(monthlyAvg(['Coffee', 'Food', 'Dining']), 1500);
+  const shopCap = niceCap(monthlyAvg(['Shopping', 'Online Shopping']), 500);
+  const funCap  = niceCap(monthlyAvg(['Entertainment']), 1000);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthTotal = txns.filter(t => !t.isRecurring && t.type === 'expense' && new Date(t.date) >= lastMonthStart && new Date(t.date) < monthStart).reduce((s, t) => s + t.amount, 0);
+  const fmt0 = (n) => `${cs()}${Math.round(n).toLocaleString(nl())}`;
+
   return [
     {
       id: 'no_spend_week',
@@ -69,6 +94,7 @@ const buildChallenges = (txns, budgets) => {
       target: 7,
       unit: 'no-spend days this month',
       completed: noSpendDays >= 7,
+      server: { key: 'no_spend_month', target: 7, days: 30 },
       tip: 'Meal prep on weekends to avoid food delivery temptation.',
     },
     {
@@ -76,7 +102,7 @@ const buildChallenges = (txns, budgets) => {
       icon: Target,
       color: 'var(--brand)',
       title: 'Save 20% of Income',
-      description: `Save at least 20% of your income (₹${savingsTarget.toLocaleString('en-IN', { maximumFractionDigits: 0 })}) this month.`,
+      description: `Save at least 20% of your income (${cs()}${savingsTarget.toLocaleString(nl(), { maximumFractionDigits: 0 })}) this month.`,
       category: 'Savings',
       difficulty: 'Hard',
       reward: 'Silent Saver badge',
@@ -84,6 +110,7 @@ const buildChallenges = (txns, budgets) => {
       target: Math.max(savingsTarget, 1),
       unit: 'saved this month',
       completed: savingsAmount >= savingsTarget && totalMonthIncome > 0,
+      server: { key: 'save_20', target: 20, days: 30 },
       tip: 'Set up automatic transfers to savings on payday.',
     },
     {
@@ -91,15 +118,16 @@ const buildChallenges = (txns, budgets) => {
       icon: Coffee,
       color: '#c2a35a',
       title: 'Coffee & Food Detox',
-      description: 'Keep food & coffee spending under ₹1,500 this month.',
+      description: `Keep food & coffee spending under ${fmt0(foodCap)} this month.`,
       category: 'Food',
       difficulty: 'Easy',
       reward: 'Mindful Eater badge',
       current: coffeeSpend,
-      target: 1500,
+      target: foodCap,
       unit: 'spent on food & coffee',
       lowerIsBetter: true,
-      completed: coffeeSpend <= 1500,
+      completed: coffeeSpend <= foodCap,
+      server: { key: 'food_cap', category: 'Food', target: foodCap, days: 30 },
       tip: 'Cook at home 5 days a week to easily hit this target.',
     },
     {
@@ -107,15 +135,16 @@ const buildChallenges = (txns, budgets) => {
       icon: ShoppingBag,
       color: '#FF9A3D',
       title: 'Zero Impulse Buys',
-      description: 'Keep online shopping under ₹500 this week.',
+      description: `Keep shopping under ${fmt0(shopCap)} this month.`,
       category: 'Shopping',
       difficulty: 'Medium',
       reward: 'Budget Ninja badge',
       current: onlineSpend,
-      target: 500,
+      target: shopCap,
       unit: 'spent on shopping this month',
       lowerIsBetter: true,
-      completed: onlineSpend <= 500,
+      completed: onlineSpend <= shopCap,
+      server: { key: 'shopping_cap', category: 'Shopping', target: shopCap, days: 30 },
       tip: 'Use the 24-hour rule: wait a day before any online purchase.',
     },
     {
@@ -123,15 +152,16 @@ const buildChallenges = (txns, budgets) => {
       icon: Zap,
       color: 'var(--red)',
       title: 'Entertainment Cap',
-      description: 'Keep entertainment spending under ₹1,000 this month.',
+      description: `Keep entertainment spending under ${fmt0(funCap)} this month.`,
       category: 'Entertainment',
       difficulty: 'Easy',
       reward: 'Focus Mode badge',
       current: entertainSpend,
-      target: 1000,
+      target: funCap,
       unit: 'spent on entertainment',
       lowerIsBetter: true,
-      completed: entertainSpend <= 1000,
+      completed: entertainSpend <= funCap,
+      server: { key: 'shopping_cap', category: 'Entertainment', target: funCap, days: 30 },
       tip: 'Use free streaming trials and free events in your city.',
     },
     {
@@ -154,15 +184,16 @@ const buildChallenges = (txns, budgets) => {
       icon: TrendingDown,
       color: 'var(--green)',
       title: 'Expense Reduction',
-      description: 'Spend less this month than last month.',
+      description: lastMonthTotal > 0 ? `Spend at least 10% less than last month (${fmt0(lastMonthTotal)}).` : 'Spend less this month than last month.',
       category: 'Savings',
       difficulty: 'Hard',
       reward: 'Downtrend badge',
       current: totalMonthExpense,
-      target: Math.max(projectedMonthTotal * 0.9, 1),
+      target: Math.max(lastMonthTotal > 0 ? lastMonthTotal * 0.9 : projectedMonthTotal * 0.9, 1),
       unit: 'spent this month',
       lowerIsBetter: true,
-      completed: totalMonthExpense < projectedMonthTotal * 0.9,
+      completed: lastMonthTotal > 0 ? totalMonthExpense < lastMonthTotal * 0.9 : false,
+      server: lastMonthTotal > 0 ? { key: 'total_cap', target: Math.round(lastMonthTotal * 0.9), days: 30 } : null,
       tip: "Review last month's statement and pick one category to cut.",
     },
     {
@@ -206,10 +237,10 @@ const ChallengeCard = ({ ch, joined, onJoin, fill }) => {
   const f = fill;
 
   const amount = ch.lowerIsBetter
-    ? `₹${ch.current.toLocaleString('en-IN', { maximumFractionDigits: 0 })} / ₹${ch.target.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+    ? `${cs()}${ch.current.toLocaleString(nl(), { maximumFractionDigits: 0 })} / ${cs()}${ch.target.toLocaleString(nl(), { maximumFractionDigits: 0 })}`
     : (typeof ch.current === 'number' && ch.current < 100)
       ? `${ch.current} / ${ch.target} ${ch.unit}`
-      : `₹${ch.current.toLocaleString('en-IN', { maximumFractionDigits: 0 })} / ₹${ch.target.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+      : `${cs()}${ch.current.toLocaleString(nl(), { maximumFractionDigits: 0 })} / ${cs()}${ch.target.toLocaleString(nl(), { maximumFractionDigits: 0 })}`;
 
   return (
     <div style={{
@@ -247,6 +278,8 @@ const ChallengeCard = ({ ch, joined, onJoin, fill }) => {
           <span style={{ fontSize: '11px', color: f.dim, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.reward}</span>
           {ch.completed ? (
             <span style={{ fontSize: '12px', fontWeight: 700, color: f.fg, flexShrink: 0 }}>Completed</span>
+          ) : !ch.server ? (
+            <span style={{ fontSize: '11px', fontWeight: 600, color: f.dim, flexShrink: 0 }}>Auto-tracked</span>
           ) : (
             <button
               onClick={() => onJoin(ch.id)}
@@ -268,10 +301,24 @@ const ChallengeCard = ({ ch, joined, onJoin, fill }) => {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const SpendingChallengesPage = () => {
-  const [joinedIds, setJoinedIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('joined_challenges') || '[]'); } catch { return []; }
-  });
   const [filter, setFilter] = useState('all');
+  const qc = useQueryClient();
+  const { data: commitments = [] } = useQuery({ queryKey: ['challenges'], queryFn: fetchChallenges });
+  const active = commitments.filter(c => c.status === 'active');
+  const finished = commitments.filter(c => c.status !== 'active').slice(0, 6);
+  const joinedTitles = new Set(active.map(c => c.title));
+
+  const joinMut = useMutation({
+    mutationFn: joinChallenge,
+    onSuccess: (c) => { qc.invalidateQueries({ queryKey: ['challenges'] }); toast.success(`Challenge accepted — ${c.daysLeft} days to go`); },
+    onError: (e) => toast.error(e.response?.data?.error || 'Could not join the challenge'),
+  });
+  const abandonMut = useMutation({
+    mutationFn: abandonChallenge,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['challenges'] }); toast.success('Challenge ended'); },
+    onError: (e) => toast.error(e.response?.data?.error || 'Could not end the challenge'),
+  });
+  const removeMut = useMutation({ mutationFn: removeChallenge, onSuccess: () => qc.invalidateQueries({ queryKey: ['challenges'] }) });
 
   const { data: allTxns = [], isLoading } = useQuery({ queryKey: ['transactions'], queryFn: fetchTransactions });
   const { data: budgets = [] }            = useQuery({ queryKey: ['budgets'],      queryFn: fetchBudgets });
@@ -279,10 +326,9 @@ const SpendingChallengesPage = () => {
   const challenges = useMemo(() => buildChallenges(allTxns, budgets), [allTxns, budgets]);
 
   const handleJoin = (id) => {
-    const updated = joinedIds.includes(id) ? joinedIds : [...joinedIds, id];
-    setJoinedIds(updated);
-    localStorage.setItem('joined_challenges', JSON.stringify(updated));
-    toast.success('Challenge accepted');
+    const ch = challenges.find(c => c.id === id);
+    if (!ch?.server || joinedTitles.has(ch.title)) return;
+    joinMut.mutate({ ...ch.server, title: ch.title });
   };
 
   const completed = challenges.filter(c => c.completed).length;
@@ -308,7 +354,7 @@ const SpendingChallengesPage = () => {
         {[
           { label: 'Completed', node: <><span style={{ color: 'var(--text)' }}>{completed}</span><span style={{ color: 'var(--text-3)', fontWeight: 600 }}> / {total}</span></> },
           { label: 'Score', node: <><span style={{ color: 'var(--brand)' }}>{completed * 125}</span><span style={{ color: 'var(--text-3)', fontSize: '14px', fontWeight: 600 }}> XP</span></> },
-          { label: 'Joined', node: <span style={{ color: 'var(--text)' }}>{joinedIds.length}</span> },
+          { label: 'Joined', node: <span style={{ color: 'var(--text)' }}>{active.length}</span> },
         ].map(({ label, node }) => (
           <div key={label} style={{ background: 'var(--bg)', padding: '16px 18px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600, marginBottom: '6px' }}>{label}</div>
@@ -335,6 +381,43 @@ const SpendingChallengesPage = () => {
         </div>
       </div>
 
+      {/* Joined challenges — tracked on the server over their own window */}
+      {active.length > 0 && (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: '20px', background: 'var(--bg)' }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)', marginBottom: '10px' }}>{t('Active challenges')}</div>
+          {active.map(c => {
+            const p = c.progress || {};
+            const pct = Math.max(0, Math.min(100, p.pct || 0));
+            const atRisk = p.onTrack === false;
+            return (
+              <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 14px', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{c.title}</div>
+                  <div style={{ fontSize: '12px', color: atRisk ? 'var(--red)' : 'var(--text-3)' }}>{p.detail} · {c.daysLeft} day{c.daysLeft === 1 ? '' : 's'} left{atRisk ? ' · at risk' : ''}</div>
+                </div>
+                <button type="button" className="n-btn n-btn-ghost n-btn-sm" style={{ color: 'var(--text-3)' }}
+                  onClick={() => { if (confirm(`End "${c.title}" early?`)) abandonMut.mutate(c.id); }}>End</button>
+                <div style={{ gridColumn: '1 / -1', height: '4px', background: 'var(--border-strong)', borderRadius: '999px', overflow: 'hidden' }}>
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.7, ease: 'easeOut' }}
+                    style={{ height: '100%', background: atRisk ? 'var(--red)' : 'var(--brand)' }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {finished.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '20px' }}>
+          {finished.map(c => (
+            <span key={c.id} className="n-btn n-btn-sm n-btn-default" style={{ cursor: 'default', gap: 6 }}>
+              {c.status === 'completed' ? <CheckCircle2 size={12} weight="fill" style={{ color: 'var(--green)' }} /> : null}
+              {c.title} · {c.status}
+              <button type="button" aria-label="Remove from history" onClick={() => removeMut.mutate(c.id)} style={{ background: 'none', border: 0, color: 'var(--text-3)', cursor: 'pointer', padding: 0 }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Category filters */}
       <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {categories.map(cat => (
@@ -359,7 +442,7 @@ const SpendingChallengesPage = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px', alignItems: 'stretch' }}>
           {filtered.map((ch, i) => (
             <motion.div key={ch.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-              <ChallengeCard ch={ch} joined={joinedIds.includes(ch.id)} onJoin={handleJoin} fill={FILLS[i % FILLS.length]} />
+              <ChallengeCard ch={ch} joined={joinedTitles.has(ch.title)} onJoin={handleJoin} fill={FILLS[i % FILLS.length]} />
             </motion.div>
           ))}
         </div>
@@ -368,7 +451,7 @@ const SpendingChallengesPage = () => {
       {/* Info callout */}
       <div style={{ marginTop: '28px', padding: '14px 16px', background: 'var(--brand-bg)', borderRadius: 'var(--r-md)', border: '1px solid var(--green-border)', fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.7 }}>
         <strong style={{ color: 'var(--brand)' }}>How challenges work:</strong> Progress is calculated automatically from your transaction history.
-        Challenges reset at the start of each month. Complete challenges to earn badges and improve your Financial Health Score.
+        Cards reset at the start of each month. Join one to commit to it: Clario tracks it over its own window, warns you if you're at risk, and records the result.
       </div>
     </div>
   );

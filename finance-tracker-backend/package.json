@@ -1,11 +1,13 @@
 {
-  "name": "finance-tracker-backend",
-  "version": "1.0.0",
-  "description": "",
+  "name": "clario-server",
+  "version": "3.0.0",
+  "description": "Clario API — personal finance backend",
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node utils/mira/mira.test.js && node utils/categorizer.test.js"
+    "dev": "node --watch server.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js && node utils/mira/mira.test.js && node utils/categorizer.test.js",
+    "test:api": "node --test --test-concurrency=1 tests/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +15,7 @@
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "compression": "^1.8.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
@@ -25,5 +28,17 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.4.0",
+    "supertest": "^7.3.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "config": {
+    "mongodbMemoryServer": {
+      "disablePostinstall": "1"
+    }
   }
 }

@@ -4,7 +4,7 @@
 import {
   SquaresFour, CreditCard, ChartBar, Wallet, TrendUp, Tag, ArrowsClockwise,
   Folder, Target, Trophy, UsersThree, FileText, BookOpen, Gift, Sparkle,
-  GearSix, Lifebuoy,
+  GearSix, Lifebuoy, Receipt,
 } from '@phosphor-icons/react';
 
 export const NAV_GROUPS = [
@@ -32,6 +32,7 @@ export const NAV_GROUPS = [
       { to: '/goals',      icon: Target,     label: 'Goals' },
       { to: '/challenges', icon: Trophy,     label: 'Challenges' },
       { to: '/family',     icon: UsersThree, label: 'Family' },
+      { to: '/splits',     icon: Receipt,    label: 'Split' },
     ],
   },
   {

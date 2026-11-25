@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { Outlet, Navigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { springFast } from '../../lib/motion';
@@ -28,7 +28,6 @@ import AppBootSkeleton from '../ui/AppBootSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTransactions } from '../../api/transactions';
 import { fetchBudgets } from '../../api/budgets';
 import { fetchGoals } from '../../api/goals';
 import { fetchNotifications } from '../../api/notifications';
@@ -48,18 +47,17 @@ const AppLayout = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const location = useLocation();
 
-  const { data: allTxns = [] } = useQuery({ queryKey: ['transactions'], queryFn: fetchTransactions, staleTime: 60000, enabled: isLoggedIn });
   const { data: budgets = [] } = useQuery({ queryKey: ['budgets'], queryFn: fetchBudgets, staleTime: 60000, enabled: isLoggedIn });
   const { data: goals = [] } = useQuery({ queryKey: ['goals'], queryFn: fetchGoals, staleTime: 60000, enabled: isLoggedIn });
   const { data: serverNotifs } = useQuery({ queryKey: ['notifications'], queryFn: fetchNotifications, staleTime: 15000, enabled: isLoggedIn, refetchInterval: 30000 });
 
   const localAlerts = React.useMemo(() => {
     let n = 0;
-    const spendMap = allTxns.filter(t => !t.isRecurring && t.type === 'expense').reduce((acc, t) => { acc[t.category] = (acc[t.category] || 0) + t.amount; return acc; }, {});
-    budgets.forEach(b => { if ((spendMap[b.category] || 0) / b.limit * 100 >= 80) n++; });
+    // Budget status comes from the server, measured against this month only.
+    budgets.forEach(b => { if (b.state === 'warning' || b.state === 'over') n++; });
     goals.forEach(g => { if ((g.currentAmount / g.targetAmount) * 100 >= 90) n++; });
     return n;
-  }, [allTxns, budgets, goals]);
+  }, [budgets, goals]);
 
   const serverUnread = serverNotifs?.unreadCount || 0;
   const totalBadge = serverUnread + localAlerts;
@@ -259,7 +257,7 @@ const AppLayout = () => {
               }}
             >
               <PageBoot routeKey={location.pathname}>
-                <div key={location.pathname}><Outlet /></div>
+                <div key={location.pathname}><Suspense fallback={null}><Outlet /></Suspense></div>
               </PageBoot>
             </div>
           </main>

@@ -39,7 +39,8 @@ const detectIntent = (message) => {
 /**
  * Format currency in Indian style.
  */
-const fmt = (n) => `₹${Math.abs(n).toLocaleString('en-IN')}`;
+const money = require('./moneyContext');
+const fmt = (n) => money.format(Math.abs(n));
 
 /**
  * Generate a response based on intent and user's financial data.

@@ -57,7 +57,7 @@ router.post('/update/:id', validate(goalUpdateSchema), async (req, res) => {
 
     goal.name          = req.body.name ?? goal.name;
     goal.targetAmount  = Number(req.body.targetAmount) || goal.targetAmount;
-    goal.currentAmount = Number(req.body.currentAmount) ?? goal.currentAmount;
+    goal.currentAmount = Number.isFinite(Number(req.body.currentAmount)) && req.body.currentAmount !== undefined && req.body.currentAmount !== "" ? Math.max(0, Number(req.body.currentAmount)) : goal.currentAmount;
     goal.deadline      = req.body.deadline ? Date.parse(req.body.deadline) : goal.deadline;
 
     await goal.save();

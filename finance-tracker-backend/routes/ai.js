@@ -10,6 +10,8 @@ const Goal        = require('../models/Goal');
 const Subscription= require('../models/Subscription');
 const { ask, NAME: MIRA } = require('../utils/mira');
 const { getPersonality }   = require('../utils/personalityEngine');
+const { baseCurrencyOf } = require('../services/ledger');
+const { formatMoney } = require('../utils/currencies');
 
 router.use(protect);
 
@@ -45,8 +47,9 @@ router.post('/chat', async (req, res) => {
         : s.amount,
     }));
 
+    const currency = await baseCurrencyOf(req.user.id);
     const result = ask(message, {
-      transactions, budgets, goals, subscriptions: enrichedSubs,
+      transactions, budgets, goals, subscriptions: enrichedSubs, currency,
       memory: memory || {}, now: new Date(),
     });
 
@@ -71,6 +74,8 @@ router.post('/chat', async (req, res) => {
 router.post('/roast', async (req, res) => {
   try {
     const transactions = await Transaction.find({ userId: req.user.id, isRecurring: false }).sort({ date: -1 }).limit(200);
+    const cur = await baseCurrencyOf(req.user.id);
+    const fm = (n) => formatMoney(n, cur);
     const expenses = transactions.filter(t => t.type === 'expense');
     const income   = transactions.filter(t => t.type === 'income');
 
@@ -96,12 +101,12 @@ router.post('/roast', async (req, res) => {
       const [cat, amt] = topCat;
       const pct = totalInc > 0 ? Math.round((amt / totalInc) * 100) : 0;
       const catRoasts = {
-        Food:          `You've spent ₹${amt.toLocaleString('en-IN')} on ${cat}. Your taste buds are thriving. Your savings account is crying. 😭`,
-        Entertainment: `₹${amt.toLocaleString('en-IN')} on entertainment. You're out here funding Netflix's new jet while your emergency fund has ₹0. 🍿`,
-        Shopping:      `₹${amt.toLocaleString('en-IN')} on shopping. Your wardrobe has more value than your investment portfolio right now. 👜`,
-        Travel:        `₹${amt.toLocaleString('en-IN')} on travel. You're exploring the world while your savings is still at the airport. ✈️`,
+        Food:          `You've spent ${fm(amt)} on ${cat}. Your taste buds are thriving. Your savings account is crying. 😭`,
+        Entertainment: `${fm(amt)} on entertainment. You're out here funding Netflix's new jet while your emergency fund has ₹0. 🍿`,
+        Shopping:      `${fm(amt)} on shopping. Your wardrobe has more value than your investment portfolio right now. 👜`,
+        Travel:        `${fm(amt)} on travel. You're exploring the world while your savings is still at the airport. ✈️`,
       };
-      roasts.push(catRoasts[cat] || `You spent ₹${amt.toLocaleString('en-IN')} on ${cat} — that's ${pct}% of your income. Yikes. 💸`);
+      roasts.push(catRoasts[cat] || `You spent ${fm(amt)} on ${cat} — that's ${pct}% of your income. Yikes. 💸`);
     }
 
     if (topMerchant) {
@@ -143,7 +148,9 @@ router.post('/roast', async (req, res) => {
 // ── GET /api/ai/investment-advice ───────────────────────────────────────────
 router.get('/investment-advice', async (req, res) => {
   try {
-    const transactions = await Transaction.find({ userId: req.user.id, isRecurring: false });
+    const transactions = await Transaction.find({ userId: req.user.id, isRecurring: false }).select('type amount date').lean();
+    const cur = await baseCurrencyOf(req.user.id);
+    const fm = (n) => formatMoney(n, cur);
     const income   = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     const surplus  = income - expenses;
@@ -162,11 +169,19 @@ router.get('/investment-advice', async (req, res) => {
       safeMonthlyInvestment: Math.round(safeInvestment),
       riskProfile,
       emergencyFundTarget: Math.round(monthlyAvgExp * 6),
-      recommendations: [
-        { priority: 1, label: 'Emergency Fund', desc: `Build ${Math.round(monthlyAvgExp * 6).toLocaleString('en-IN')} (6 months expenses) in liquid FD/savings`, type: 'fd' },
-        { priority: 2, label: 'Index Fund SIP', desc: `Start ₹${Math.round(safeInvestment * 0.5).toLocaleString('en-IN')}/month in a Nifty 50 index fund`, type: 'mutual_fund' },
-        { priority: 3, label: 'PPF / NPS', desc: `Invest ₹${Math.round(safeInvestment * 0.3).toLocaleString('en-IN')}/month for tax benefits (80C)`, type: 'ppf' },
-        { priority: 4, label: 'Direct Equity', desc: `Only allocate ₹${Math.round(safeInvestment * 0.2).toLocaleString('en-IN')} to individual stocks if comfortable with risk`, type: 'stocks' },
+      currency: cur,
+      // General education, not personalised investment advice — the client shows that disclaimer.
+      disclaimer: 'Educational guidance based on your own numbers. Not financial advice; consider a licensed adviser for your situation.',
+      recommendations: cur === 'INR' ? [
+        { priority: 1, label: 'Emergency Fund', desc: `Build ${fm(monthlyAvgExp * 6)} (6 months of expenses) in a liquid FD or savings account`, type: 'fd' },
+        { priority: 2, label: 'Index Fund SIP', desc: `A broad index fund SIP of around ${fm(safeInvestment * 0.5)}/month is a common low-cost starting point`, type: 'mutual_fund' },
+        { priority: 3, label: 'PPF / NPS', desc: `Around ${fm(safeInvestment * 0.3)}/month in tax-advantaged schemes (Section 80C)`, type: 'ppf' },
+        { priority: 4, label: 'Direct Equity', desc: `Keep individual stocks to about ${fm(safeInvestment * 0.2)}/month, and only if you're comfortable with risk`, type: 'stocks' },
+      ] : [
+        { priority: 1, label: 'Emergency Fund', desc: `Build ${fm(monthlyAvgExp * 6)} (6 months of expenses) in an easy-access savings account`, type: 'fd' },
+        { priority: 2, label: 'Broad Index Fund', desc: `A low-cost diversified index fund of around ${fm(safeInvestment * 0.5)}/month is a common starting point`, type: 'mutual_fund' },
+        { priority: 3, label: 'Tax-advantaged retirement', desc: `Around ${fm(safeInvestment * 0.3)}/month into your country's tax-advantaged retirement account`, type: 'ppf' },
+        { priority: 4, label: 'Individual stocks', desc: `Keep individual stocks to about ${fm(safeInvestment * 0.2)}/month, and only if you're comfortable with risk`, type: 'stocks' },
       ],
     });
   } catch (err) {

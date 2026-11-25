@@ -8,8 +8,9 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Target, Plus, ArrowRight, CheckCircle } from '@phosphor-icons/react';
 import { stagger, prefersReducedMotion } from '../../lib/motion';
+import { cs, nl } from '@/lib/money';
 
-const inr = (n) => `₹${Math.round(Math.abs(n)).toLocaleString('en-IN')}`;
+const inr = (n) => `${cs()}${Math.round(Math.abs(n)).toLocaleString(nl())}`;
 
 export default function GoalsMini({ goals = [] }) {
   const reduced = prefersReducedMotion();

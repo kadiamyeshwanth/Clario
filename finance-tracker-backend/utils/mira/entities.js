@@ -43,7 +43,7 @@ const parseAmount = (text) => {
   }
 
   // ₹40,000 / 40000 — ignore 4-digit years so "in 2025" isn't read as an amount
-  const plain = s.match(/(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d{1,2})?)/)
+  const plain = s.match(/(?:₹|rs\.?|inr|\$|€|£|usd|eur|gbp|aed)\s*([\d,]+(?:\.\d{1,2})?)/)
              || s.match(/\b([\d,]{3,}(?:\.\d{1,2})?)\b/);
   if (plain) {
     const n = parseFloat(plain[1].replace(/,/g, ''));

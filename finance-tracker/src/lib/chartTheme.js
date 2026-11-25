@@ -1,4 +1,5 @@
-/**
+
+import { cs, nl } from '@/lib/money';/**
  * chartTheme — one source of truth for every Chart.js surface.
  *
  * Two things were wrong before this existed:
@@ -60,7 +61,7 @@ const cssVar = (name, fallback) => {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 };
 
-const money = (v) => `₹${Number(v).toLocaleString('en-IN')}`;
+const money = (v) => `${cs()}${Number(v).toLocaleString(nl())}`;
 
 /**
  * Build base options + both scale orientations.

@@ -14,6 +14,7 @@ import { fetchTransactions } from '../api/transactions';
 import { useAuth } from '../context/AuthContext';
 import { EXPENSE_CATEGORIES } from '../constants/categories';
 import PageHeader from '../components/ui/PageHeader';
+import { cs, nl } from '@/lib/money';
 
 const BudgetsPage = () => {
   const { currentUser } = useAuth();
@@ -45,7 +46,8 @@ const BudgetsPage = () => {
 
   const enriched = useMemo(() => {
     const spendMap = expenses.reduce((acc, t) => { acc[t.category] = (acc[t.category] || 0) + t.amount; return acc; }, {});
-    return budgets.map(b => ({ ...b, spent: spendMap[b.category] || 0, pct: ((spendMap[b.category] || 0) / b.limit) * 100 }));
+    // Server figures are this month only (with rollover); the local sum is a fallback.
+    return budgets.map(b => ({ ...b, spent: b.spent ?? (spendMap[b.category] || 0), pct: b.pct ?? ((spendMap[b.category] || 0) / b.limit) * 100 }));
   }, [budgets, expenses]);
 
   return (
@@ -88,7 +90,7 @@ const BudgetsPage = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="n-label">Monthly limit (₹)</label>
+                    <label className="n-label">Monthly limit ({cs()})</label>
                     <input className="n-input" type="number" min="1" placeholder="e.g. 5,000" value={form.limit} onChange={e => setForm({ ...form, limit: e.target.value })} required />
                   </div>
                 </div>
@@ -142,8 +144,8 @@ const BudgetsPage = () => {
                 </div>
 
                 <div className="bud-fig">
-                  <span className="bud-spent">₹{b.spent.toLocaleString('en-IN')}</span>
-                  <span className="bud-limit">/ ₹{b.limit.toLocaleString('en-IN')}</span>
+                  <span className="bud-spent">{cs()}{b.spent.toLocaleString(nl())}</span>
+                  <span className="bud-limit">/ {cs()}{b.limit.toLocaleString(nl())}</span>
                   <span className="bud-pct">{b.pct.toFixed(0)}%</span>
                 </div>
 

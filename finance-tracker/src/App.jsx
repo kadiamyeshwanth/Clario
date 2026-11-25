@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { IconContext } from '@phosphor-icons/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -8,29 +8,31 @@ import { AuthProvider }  from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ErrorBoundary     from './components/ErrorBoundary';
 import AppLayout         from './components/layout/AppLayout';
+import AppBootSkeleton   from './components/ui/AppBootSkeleton';
 
 import PrelandingPage  from './pages/PrelandingPage';
 import LoginPage          from './pages/LoginPage';
-import ResetPasswordPage  from './pages/ResetPasswordPage';
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 import OAuthCallbackPage  from './pages/OAuthCallbackPage';
-import DashboardPage      from './pages/DashboardPage';
-import TransactionsPage   from './pages/TransactionsPage';
-import RecurringPage      from './pages/RecurringPage';
-import GoalsPage          from './pages/GoalsPage';
-import BudgetsPage        from './pages/BudgetsPage';
-import ReportsPage        from './pages/ReportsPage';
-import SettingsPage       from './pages/SettingsPage';
-import SubscriptionsPage  from './pages/SubscriptionsPage';
-import WalletsPage        from './pages/WalletsPage';
-import AnalyticsPage      from './pages/AnalyticsPage';
-import AIInsightsPage     from './pages/AIInsightsPage';
-import JournalPage        from './pages/JournalPage';
-import InvestmentsPage    from './pages/InvestmentsPage';
-import WrappedPage        from './pages/WrappedPage';
-import SpendingChallengesPage from './pages/SpendingChallengesPage';
-import FamilyPage         from './pages/FamilyPage';
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const TransactionsPage = lazy(() => import('./pages/TransactionsPage'));
+const RecurringPage = lazy(() => import('./pages/RecurringPage'));
+const GoalsPage = lazy(() => import('./pages/GoalsPage'));
+const BudgetsPage = lazy(() => import('./pages/BudgetsPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const SubscriptionsPage = lazy(() => import('./pages/SubscriptionsPage'));
+const WalletsPage = lazy(() => import('./pages/WalletsPage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const AIInsightsPage = lazy(() => import('./pages/AIInsightsPage'));
+const JournalPage = lazy(() => import('./pages/JournalPage'));
+const InvestmentsPage = lazy(() => import('./pages/InvestmentsPage'));
+const WrappedPage = lazy(() => import('./pages/WrappedPage'));
+const SpendingChallengesPage = lazy(() => import('./pages/SpendingChallengesPage'));
+const FamilyPage = lazy(() => import('./pages/FamilyPage'));
 import NotFoundPage       from './pages/NotFoundPage';
-import HelpPage           from './pages/HelpPage';
+const SplitsPage = lazy(() => import('./pages/SplitsPage'));
+const HelpPage = lazy(() => import('./pages/HelpPage'));
 
 /* One icon system, filled by default.
    Setting the weight here means no call site has to pass weight="fill", and the
@@ -47,6 +49,7 @@ const App = () => (
       <ThemeProvider>
         <AuthProvider>
           <BrowserRouter>
+            <Suspense fallback={<AppBootSkeleton />}>
             <Routes>
               {/* Public */}
               <Route path="/login"          element={<LoginPage />} />
@@ -71,6 +74,8 @@ const App = () => (
                 <Route path="/wrapped"       element={<WrappedPage />} />
                 <Route path="/challenges"    element={<SpendingChallengesPage />} />
                 <Route path="/family"        element={<FamilyPage />} />
+                <Route path="/splits"        element={<SplitsPage />} />
+                <Route path="/splits/:id"    element={<SplitsPage />} />
                 <Route path="/settings"      element={<SettingsPage />} />
                 <Route path="/help"          element={<HelpPage />} />
               </Route>
@@ -78,6 +83,7 @@ const App = () => (
               <Route path="/"  element={<PrelandingPage />} />
               <Route path="*"  element={<NotFoundPage />} />
             </Routes>
+            </Suspense>
           </BrowserRouter>
 
           <Toaster position="top-center" containerStyle={{ top: 76 }} gutter={8} toastOptions={{

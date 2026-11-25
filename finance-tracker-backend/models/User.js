@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { SUPPORTED_CURRENCIES } = require('../utils/currencies');
 
 const Schema = mongoose.Schema;
+
+const MAX_FAILED_LOGINS = 8;
+const LOCK_MINUTES = 15;
 
 const userSchema = new Schema({
   username: {
@@ -21,10 +25,11 @@ const userSchema = new Schema({
     lowercase: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
   },
+  displayName: { type: String, trim: true, maxlength: 60, default: '' },
   password: {
     type: String,
     // Not required for OAuth users who sign in via Google
-    minlength: [6, 'Password must be at least 6 characters'],
+    minlength: [8, 'Password must be at least 8 characters'],
   },
   // Password-reset fields (only populated during reset flow)
   resetToken:       { type: String,  default: undefined },
@@ -32,29 +37,89 @@ const userSchema = new Schema({
   // Google OAuth
   googleId: { type: String, sparse: true },
   // SMS Webhook Token — unique per-user token for SMS forwarder app authentication
-  // Stored as plain token (not secret like passwords — it's a webhook key, not a password)
   smsWebhookToken: { type: String, default: undefined, index: true },
+
+  // ── Preferences (internationalisation) ────────────────────────────────────
+  // `currency` is the user's base currency: every stored `amount` is in it.
+  // Entries made in another currency keep their original figure alongside.
+  preferences: {
+    currency: { type: String, enum: SUPPORTED_CURRENCIES, default: 'INR' },
+    language: { type: String, enum: ['en', 'hi', 'es', 'fr', 'de', 'pt'], default: 'en' },
+    locale:   { type: String, default: 'en-IN', maxlength: 20 },
+    timezone: { type: String, default: 'Asia/Kolkata', maxlength: 60 },
+    weekStartsOn: { type: Number, min: 0, max: 6, default: 1 },
+    notifications: {
+      budgetAlerts:   { type: Boolean, default: true },
+      billReminders:  { type: Boolean, default: true },
+      weeklyDigest:   { type: Boolean, default: true },
+      push:           { type: Boolean, default: true },
+    },
+  },
+  onboardedAt: { type: Date, default: null },
+
+  // ── Brute-force protection ────────────────────────────────────────────────
+  failedLogins: { type: Number, default: 0 },
+  lockUntil:    { type: Date, default: null },
 }, { timestamps: true });
 
-// Hash the password BEFORE saving to DB (only if it was changed)
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+userSchema.pre('save', async function () {
+  if (!this.isModified('password') || !this.password) return;
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
-  next();
 });
 
-// Instance method: compare a plain-text password against the stored hash
 userSchema.methods.comparePassword = async function (plainPassword) {
+  if (!this.password) return false; // OAuth-only account
   return bcrypt.compare(plainPassword, this.password);
 };
 
-// Never send the password hash in API responses
+userSchema.methods.isLocked = function () {
+  return !!(this.lockUntil && this.lockUntil > new Date());
+};
+
+/** Records a failed login; locks the account after too many in a row. */
+userSchema.methods.registerFailedLogin = async function () {
+  this.failedLogins = (this.failedLogins || 0) + 1;
+  if (this.failedLogins >= MAX_FAILED_LOGINS) {
+    this.lockUntil = new Date(Date.now() + LOCK_MINUTES * 60 * 1000);
+    this.failedLogins = 0;
+  }
+  await this.save({ validateBeforeSave: false });
+};
+
+userSchema.methods.clearFailedLogins = async function () {
+  if (this.failedLogins || this.lockUntil) {
+    this.failedLogins = 0;
+    this.lockUntil = null;
+    await this.save({ validateBeforeSave: false });
+  }
+};
+
+/** The shape every auth response returns — never the hash or tokens. */
+userSchema.methods.toPublic = function () {
+  return {
+    id: this._id,
+    username: this.username,
+    email: this.email,
+    displayName: this.displayName || '',
+    hasPassword: !!this.password,
+    preferences: this.preferences?.toObject ? this.preferences.toObject() : this.preferences,
+    onboarded: !!this.onboardedAt,
+    createdAt: this.createdAt,
+  };
+};
+
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.resetToken;
+  delete obj.resetTokenExpiry;
+  delete obj.smsWebhookToken;
+  delete obj.failedLogins;
+  delete obj.lockUntil;
   return obj;
 };
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;
+module.exports.LOCK_MINUTES = LOCK_MINUTES;

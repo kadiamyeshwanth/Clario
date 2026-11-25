@@ -13,6 +13,7 @@ import {
 import { fetchGoals, addGoal, updateGoal, deleteGoal } from '../api/goals';
 import { useAuth } from '../context/AuthContext';
 import PageHeader from '../components/ui/PageHeader';
+import { cs, nl } from '@/lib/money';
 
 const GoalsPage = () => {
   const { currentUser } = useAuth();
@@ -46,7 +47,7 @@ const GoalsPage = () => {
   };
 
   const handleContribute = goal => {
-    const val = prompt(`Add to "${goal.name}" (₹${goal.currentAmount.toLocaleString('en-IN')} saved):`);
+    const val = prompt(`Add to "${goal.name}" (${cs()}${goal.currentAmount.toLocaleString(nl())} saved):`);
     const amt = parseFloat(val);
     if (val && amt > 0) updateMut.mutate({ id: goal.id, username: goal.username, name: goal.name, targetAmount: goal.targetAmount, currentAmount: goal.currentAmount + amt, deadline: goal.deadline });
   };
@@ -89,7 +90,7 @@ const GoalsPage = () => {
                     <input className="n-input" type="text" placeholder="e.g. Emergency Fund" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
                   </div>
                   <div>
-                    <label className="n-label">Target amount (₹)</label>
+                    <label className="n-label">Target amount ({cs()})</label>
                     <input className="n-input" type="number" min="1" placeholder="100,000" value={form.targetAmount} onChange={e => setForm({ ...form, targetAmount: e.target.value })} required />
                   </div>
                   <div>
@@ -141,7 +142,7 @@ const GoalsPage = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text)', marginBottom: '2px' }}>{goal.name}</div>
-                    {goal.deadline && <div style={{ fontSize: '11px', color: 'var(--text-3)' }}>by {new Date(goal.deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
+                    {goal.deadline && <div style={{ fontSize: '11px', color: 'var(--text-3)' }}>by {new Date(goal.deadline).toLocaleDateString(nl(), { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
                   </div>
                   <motion.button whileHover={{ backgroundColor: 'var(--red-bg)', color: 'var(--red)' }}
                     onClick={() => { if (confirm(`Delete "${goal.name}"?`)) deleteMut.mutate(goal.id); }}
@@ -153,10 +154,10 @@ const GoalsPage = () => {
                 {/* Amount */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
                   <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
-                    ₹{goal.currentAmount.toLocaleString('en-IN')}
+                    {cs()}{goal.currentAmount.toLocaleString(nl())}
                   </span>
                   <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>
-                    of ₹{goal.targetAmount.toLocaleString('en-IN')}
+                    of {cs()}{goal.targetAmount.toLocaleString(nl())}
                   </span>
                 </div>
 
