@@ -1,5 +1,5 @@
 /**
- * mailer.js — outbound email for the Finance Tracker.
+ * mailer.js — outbound email for Clario.
  *
  * Two transports, tried in this order:
  *
@@ -73,7 +73,7 @@ const resetEmailHtml = (resetUrl) => `
   <div style="font-family:Inter,sans-serif;max-width:480px;margin:auto;padding:32px 24px;border:1px solid #e5e7eb;border-radius:12px">
     <h2 style="font-size:20px;font-weight:700;margin-bottom:8px;color:#111827">Reset your password</h2>
     <p style="color:#6b7280;font-size:14px;margin-bottom:24px">
-      Click the button below to reset your Finance Tracker password.
+      Click the button below to reset your Clario password.
       This link expires in <strong>1 hour</strong>.
     </p>
     <a href="${resetUrl}"
@@ -104,7 +104,7 @@ const sendViaBrevoApi = async (toEmail, resetUrl) => {
     body: JSON.stringify({
       sender:      { name: 'Clario', email: process.env.EMAIL_USER },
       to:          [{ email: toEmail }],
-      subject:     'Reset your Finance Tracker password',
+      subject:     'Reset your Clario password',
       htmlContent: resetEmailHtml(resetUrl),
     }),
   });
@@ -145,9 +145,9 @@ const sendResetEmail = async (toEmail, resetUrl) => {
   }
 
   await transporter.sendMail({
-    from:    `"Finance Tracker" <${process.env.EMAIL_USER}>`,
+    from:    `"Clario" <${process.env.EMAIL_USER}>`,
     to:      toEmail,
-    subject: 'Reset your Finance Tracker password',
+    subject: 'Reset your Clario password',
     html:    resetEmailHtml(resetUrl),
   });
 };

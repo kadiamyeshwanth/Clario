@@ -16,7 +16,7 @@ import androidx.core.content.ContextCompat
 /**
  * MainActivity — The setup screen shown when the app is first launched.
  *
- * User enters their webhook URL (copied from Finance Tracker Settings page),
+ * User enters their webhook URL (copied from Clario Settings page),
  * grants SMS permission, and activates the background service.
  * After setup the user never needs to open this app again.
  */

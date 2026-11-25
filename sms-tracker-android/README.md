@@ -1,6 +1,6 @@
 # UPI SMS Tracker — Android Companion App
 
-A minimal native Android app that runs silently in the background, detects UPI/bank SMS messages, and auto-sends them to your Personal Finance Tracker.
+A minimal native Android app that runs silently in the background, detects UPI/bank SMS messages, and auto-sends them to Clario.
 
 ## How to build the APK
 
