@@ -52,7 +52,7 @@ export default function SplitGroups() {
           <Button title="Join" loading={join.isPending} disabled={code.trim().length < 6} onPress={() => join.mutate()} />
         </Card>
       )}
-      {q.isLoading ? <Loading /> : q.isError ? <ErrorNote error={q.error} onRetry={q.refetch} /> : q.data.length === 0 ? (
+      {q.isLoading ? <Loading /> : (q.isError && !q.data) ? <ErrorNote error={q.error} onRetry={q.refetch} /> : q.data.length === 0 ? (
         <Empty title="No shared groups yet" body="Create one for a trip or your flat. Friends don’t need the app to be included." />
       ) : q.data.map((g) => (
         <Card key={g.id} onPress={() => router.push(`/splits/${g.id}`)} style={{ gap: 4, opacity: g.archived ? 0.6 : 1 }}>

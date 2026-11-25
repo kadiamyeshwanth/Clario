@@ -24,7 +24,7 @@ export default function Challenges() {
 
   return (
     <Screen edges={[]} refreshing={mine.isRefetching} onRefresh={() => { mine.refetch(); cat.refetch(); }}>
-      {mine.isLoading ? <Loading /> : mine.isError ? <ErrorNote error={mine.error} onRetry={mine.refetch} /> : active.map((c) => (
+      {mine.isLoading ? <Loading /> : (mine.isError && !mine.data) ? <ErrorNote error={mine.error} onRetry={mine.refetch} /> : active.map((c) => (
         <Card key={c.id} style={{ gap: 8 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text variant="heading">{c.title}</Text>

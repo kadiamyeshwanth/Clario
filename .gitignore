@@ -24,3 +24,8 @@ Thumbs.db
 .idea/
 
 .vercel
+
+# Built app binaries (share via GitHub Releases, not git)
+releases/
+*.apk
+*.aab

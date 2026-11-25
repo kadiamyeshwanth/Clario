@@ -74,7 +74,9 @@ const refresh = () => {
   return refreshing;
 };
 
-export const request = async (method, path, body, { retried = false, timeout = 20000 } = {}) => {
+// 60s: a free-tier host (Render) sleeps when idle and takes ~30–50s to wake;
+// a shorter timeout turned that first request into a false "can't reach".
+export const request = async (method, path, body, { retried = false, timeout = 60000 } = {}) => {
   let res;
   try {
     res = await fetch(`${API_URL}${path}`, {

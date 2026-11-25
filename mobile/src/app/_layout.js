@@ -7,16 +7,28 @@ import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import { Unbounded_700Bold } from '@expo-google-fonts/unbounded';
 import { GeistMono_500Medium, GeistMono_700Bold } from '@expo-google-fonts/geist-mono';
 import { AuthProvider, useAuth } from '../lib/auth';
-import { queryClient } from '../lib/query';
+import { focusManager } from '@tanstack/react-query';
+import { AppState } from 'react-native';
+import { queryClient, persistOptions } from '../lib/query';
+
+// Refetch when the app returns to the foreground (React Native has no window focus).
+if (Platform.OS !== 'web') {
+  focusManager.setEventListener((handleFocus) => {
+    const sub = AppState.addEventListener('change', (s) => handleFocus(s === 'active'));
+    return () => sub.remove();
+  });
+}
 import { linkFor } from '../lib/push';
 import { flushOutbox } from '../lib/outbox';
 import { flushQueue as flushSmsQueue } from '../../modules/clario-sms';
+import * as SmsImport from '../../modules/clario-sms';
+import { api } from '../lib/api';
 import { useTheme } from '../theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -31,7 +43,17 @@ function Navigator() {
   useEffect(() => {
     if (!user) return;
     flushOutbox().catch(() => {});
-    flushSmsQueue().catch(() => {}); // bank SMS that arrived while offline
+    // If SMS auto-import is on, make sure it posts to THIS account's webhook on
+    // THIS server — the saved address can be stale after switching account or
+    // server (found on-device: it still pointed at the test server).
+    (async () => {
+      const st = SmsImport.getStatus();
+      if (st?.enabled) {
+        const setup = await api.get('/sms/setup');
+        if (setup?.webhookUrl) await SmsImport.configure(setup.webhookUrl, true);
+      }
+      await flushSmsQueue(); // bank SMS that arrived while offline
+    })().catch(() => {});
   }, [user]);
 
   // A tapped notification opens the screen it is about.
@@ -81,11 +103,11 @@ export default function RootLayout() {
   if (!loaded && !error) return null;
   return (
     <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
         <AuthProvider>
           <Navigator />
         </AuthProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </SafeAreaProvider>
   );
 }

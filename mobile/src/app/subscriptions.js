@@ -20,7 +20,7 @@ export default function Subscriptions() {
 
   return (
     <Screen edges={[]} refreshing={q.isRefetching} onRefresh={q.refetch}>
-      {q.isLoading ? <Loading /> : q.isError ? <ErrorNote error={q.error} onRetry={q.refetch} /> : (
+      {q.isLoading ? <Loading /> : (q.isError && !q.data) ? <ErrorNote error={q.error} onRetry={q.refetch} /> : (
         <>
           <Card brand style={{ gap: 4 }}>
             <Text variant="caption" color="rgba(255,255,255,0.75)">Subscriptions cost you</Text>

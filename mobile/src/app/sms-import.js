@@ -34,6 +34,13 @@ export default function SmsImport() {
     return () => sub.remove();
   }, [refreshStatus]);
 
+  // Keep the native forwarder pointed at this account's current webhook.
+  useEffect(() => {
+    if (setup.data?.webhookUrl && Sms.getStatus()?.enabled) {
+      Sms.configure(setup.data.webhookUrl, true).then(refreshStatus).catch(() => {});
+    }
+  }, [setup.data?.webhookUrl, refreshStatus]);
+
   const refreshData = () => {
     ['smsHistory', 'transactions', 'overview', 'wallets', 'budgets'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
   };
@@ -90,7 +97,7 @@ export default function SmsImport() {
   };
 
   if (setup.isLoading) return <Screen edges={[]}><Loading /></Screen>;
-  if (setup.isError) return <Screen edges={[]}><ErrorNote error={setup.error} onRetry={setup.refetch} /></Screen>;
+  if (setup.isError && !setup.data) return <Screen edges={[]}><ErrorNote error={setup.error} onRetry={setup.refetch} /></Screen>;
   const s = setup.data;
 
   return (

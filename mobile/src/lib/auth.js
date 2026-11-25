@@ -7,8 +7,9 @@ import { api, tokens, setSignedOutHandler } from './api';
 import { setCurrency } from './money';
 import { setLanguage } from './i18n';
 import { registerForPush, unregisterPush } from './push';
-import { queryClient } from './query';
+import { clearCache } from './query';
 import { plain } from './storage';
+import * as SmsImport from '../../modules/clario-sms';
 
 const USER_KEY = 'clario.user';
 
@@ -38,12 +39,12 @@ export function AuthProvider({ children }) {
   const signOutLocal = useCallback(async () => {
     await tokens.clear();
     await plain.del(USER_KEY);
-    queryClient.clear();
+    await clearCache();
     setUser(null);
   }, []);
 
   useEffect(() => {
-    setSignedOutHandler(() => { queryClient.clear(); setUser(null); });
+    setSignedOutHandler(() => { clearCache().catch(() => {}); setUser(null); });
     (async () => {
       try {
         if (await tokens.load()) {
@@ -88,6 +89,9 @@ export function AuthProvider({ children }) {
     forgotPassword: (email) => api.post('/auth/forgot-password', { email: email.trim() }),
     signOut: async () => {
       await unregisterPush().catch(() => {});
+      // Stop forwarding bank SMS: the next person to sign in on this phone must
+      // never receive this account's messages (or vice versa).
+      await SmsImport.configure('', false).catch(() => {});
       const refreshToken = await tokens.refresh();
       if (refreshToken) await api.post('/auth/logout', { refreshToken }).catch(() => {});
       await signOutLocal();

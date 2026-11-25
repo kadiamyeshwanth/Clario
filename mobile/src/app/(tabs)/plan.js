@@ -50,7 +50,7 @@ export default function Plan() {
             </Card>
           ) : <Button title="Set a budget" variant="default" onPress={() => setForm({ category: 'Food', limit: '' })} />}
 
-          {budgets.isLoading ? <Loading /> : budgets.isError ? <ErrorNote error={budgets.error} onRetry={budgets.refetch} /> : budgets.data.length === 0 ? (
+          {budgets.isLoading ? <Loading /> : (budgets.isError && !budgets.data) ? <ErrorNote error={budgets.error} onRetry={budgets.refetch} /> : budgets.data.length === 0 ? (
             <Empty title="No budgets yet" body="Pick a category and a monthly limit. Clario warns you before you go over." />
           ) : budgets.data.map((b) => (
             <Card key={b._id} style={{ gap: 8 }} onPress={() => confirm('Delete budget?', `Remove the ${b.category} budget?`, () => delBudget.mutate(b._id))}>
@@ -91,7 +91,7 @@ export default function Plan() {
             </Card>
           ) : <Button title="New goal" variant="default" onPress={() => setForm({ name: '', target: '' })} />}
 
-          {goals.isLoading ? <Loading /> : goals.isError ? <ErrorNote error={goals.error} onRetry={goals.refetch} /> : goals.data.length === 0 ? (
+          {goals.isLoading ? <Loading /> : (goals.isError && !goals.data) ? <ErrorNote error={goals.error} onRetry={goals.refetch} /> : goals.data.length === 0 ? (
             <Empty title="No goals yet" body="A trip, a laptop, three months of rent in the bank — name it and watch it fill." />
           ) : goals.data.map((g) => {
             const pct = Math.min(100, (g.currentAmount / g.targetAmount) * 100);

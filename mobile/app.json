@@ -53,11 +53,11 @@
     ],
     "scheme": "clario",
     "extra": {
-      "apiUrl": "http://localhost:5000/api/v1",
+      "apiUrl": "https://finance-tracker-api-dbiw.onrender.com/api/v1",
       "eas": {
         "projectId": ""
       },
-      "webUrl": "http://localhost:5173"
+      "webUrl": "https://personal-finance-tracker-jet-delta.vercel.app"
     }
   }
 }

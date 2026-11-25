@@ -38,8 +38,13 @@ export default function Home() {
         </Pressable>
       </View>
 
-      {q.isLoading ? <Loading /> : q.isError ? <ErrorNote error={q.error} onRetry={q.refetch} /> : (
+      {q.isLoading ? <Loading /> : (q.isError && !q.data) ? <ErrorNote error={q.error} onRetry={q.refetch} /> : (
         <>
+          {q.isError && (
+            <Text variant="small" color={t.brand}>
+              Offline — showing your last saved data{q.dataUpdatedAt ? ` from ${new Date(q.dataUpdatedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : ''}. Pull down to refresh.
+            </Text>
+          )}
           <Card brand style={{ gap: 6 }}>
             <Text variant="caption" color="rgba(255,255,255,0.75)">Total balance · across accounts</Text>
             <Text variant="figure" color="#FFFFFF" style={{ fontSize: 34 }}>{money(o.netWorth, { sign: true })}</Text>

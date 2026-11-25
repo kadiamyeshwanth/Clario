@@ -9,11 +9,11 @@
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-API-HOST/api/v1", "EXPO_PUBLIC_WEB_URL": "https://REPLACE-WITH-YOUR-WEB-HOST" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://finance-tracker-api-dbiw.onrender.com/api/v1", "EXPO_PUBLIC_WEB_URL": "https://personal-finance-tracker-jet-delta.vercel.app" }
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_API_URL": "https://REPLACE-WITH-YOUR-API-HOST/api/v1", "EXPO_PUBLIC_WEB_URL": "https://REPLACE-WITH-YOUR-WEB-HOST" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://finance-tracker-api-dbiw.onrender.com/api/v1", "EXPO_PUBLIC_WEB_URL": "https://personal-finance-tracker-jet-delta.vercel.app" }
     }
   },
   "submit": { "production": {} }
