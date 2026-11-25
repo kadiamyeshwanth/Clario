@@ -1,0 +1,41 @@
+name: Clario CI
+
+on:
+  push:
+    paths: ['clario/**', '.github/workflows/clario.yml']
+  pull_request:
+    paths: ['clario/**', '.github/workflows/clario.yml']
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: clario/server } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: clario/server/package-lock.json }
+      - run: npm ci
+      # mongodb-memory-server downloads a MongoDB binary on first run.
+      - run: npm test
+
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: clario/web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: clario/web/package-lock.json }
+      - run: npm ci
+      - run: node scripts/codemod-currency.cjs --check
+      - run: npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: clario/mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: clario/mobile/package-lock.json }
+      - run: npm ci
+      - run: npx expo-doctor
+      - run: npx expo export --platform android --platform ios --platform web --output-dir .expo-check

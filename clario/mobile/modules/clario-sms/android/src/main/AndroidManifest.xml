@@ -1,0 +1,23 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!-- Bank / UPI SMS auto-import. Asked for at runtime, only when the user turns it on. -->
+  <uses-permission android:name="android.permission.RECEIVE_SMS" />
+  <uses-permission android:name="android.permission.READ_SMS" />
+  <uses-permission android:name="android.permission.INTERNET" />
+
+  <application>
+    <!--
+      Manifest-registered, so Android wakes it for every incoming SMS even when
+      Clario is closed — no foreground service or battery-draining keep-alive.
+      SMS_RECEIVED is exempt from the Android 8 implicit-broadcast limits.
+    -->
+    <receiver
+      android:name="app.clario.sms.SmsReceiver"
+      android:exported="true"
+      android:permission="android.permission.BROADCAST_SMS">
+      <intent-filter android:priority="999">
+        <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>
