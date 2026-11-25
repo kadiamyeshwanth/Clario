@@ -33,6 +33,9 @@ const env = {
     'http://localhost:5173',
     'http://localhost:4173',
     'http://localhost:8081', // Expo web
+    // The production web app (the original server allowed it unconditionally;
+    // kept so a missing env var can't lock the live site out).
+    'https://personal-finance-tracker-jet-delta.vercel.app',
     ...list(process.env.CORS_ORIGIN),
     ...list(process.env.FRONTEND_URL),
   ],
@@ -63,7 +66,6 @@ env.check = () => {
   const fatal = [];
   if (!env.MONGODB_URI) fatal.push('MONGODB_URI is not set.');
   if (!env.JWT_SECRET) fatal.push('JWT_SECRET is not set.');
-  if (isProd && env.JWT_SECRET.length < 32) fatal.push('JWT_SECRET must be at least 32 characters in production.');
   if (fatal.length) {
     const err = new Error(`Configuration error:\n  • ${fatal.join('\n  • ')}`);
     err.fatal = true;
@@ -71,6 +73,9 @@ env.check = () => {
   }
   const warnings = [];
   if (isProd) {
+    // Warn, don't refuse to boot: an existing deployment's secret must keep
+    // working when this version is rolled out over it. Rotate it when convenient.
+    if (env.JWT_SECRET.length < 32) warnings.push('JWT_SECRET is shorter than 32 characters — rotate it to a longer random value (signs everyone out once).');
     if (!process.env.BACKEND_URL) warnings.push('BACKEND_URL — SMS webhook URLs will point at localhost.');
     if (!process.env.FRONTEND_URL) warnings.push('FRONTEND_URL — reset and OAuth links will point at localhost.');
     if (!env.BREVO_API_KEY && !(env.EMAIL_USER && env.EMAIL_PASS)) warnings.push('BREVO_API_KEY or EMAIL_USER/EMAIL_PASS — password reset email is disabled.');

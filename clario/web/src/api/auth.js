@@ -1,9 +1,10 @@
 import apiClient, { tokenStore } from './client';
+import { nl } from '@/lib/money';
 
 /** Browser's own currency/timezone/language guess, sent once at sign-up. */
 const detectPreferences = () => {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const locale = navigator.language || 'en-IN';
+  const locale = navigator.language || nl();
   const language = locale.slice(0, 2);
   const region = (locale.split('-')[1] || '').toUpperCase();
   const byRegion = {
